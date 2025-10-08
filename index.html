@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Rotaciones AVCR</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+body { font-family: "Open Sans", sans-serif;; margin: 0; padding: 0; background: linear-gradient(90deg, #027bc5, #83006e); color: #333; }
+header { background: #5b037f; color: white; text-align: center; padding: 15px 0; font-size: 24px; font-weight: bold; }
+.container { width: 90%; margin: 20px auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); font-size: 18px; }
+h2 { color: #5b037f; border-bottom: 2px solid #862a91; padding-bottom: 5px; margin-top: 30px; }
+table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; }
+th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+th { background-color: #862a91; color: white; }
+td[contenteditable="true"], div[contenteditable="true"], span[contenteditable="true"] { background: #f0f8ff; outline: none; }
+td.over { outline: 2px solid #862a91; }
+textarea { width: 100%; height: 80px; font-size: 14px; padding: 5px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; }
+button { background: #862a91; color: white; border: none; padding: 8px 15px; margin: 0 5px; font-size: 14px; cursor: pointer; border-radius: 5px; transition: background 0.3s; }
+button:hover { background: #005a9e; }
+.helper { font-size: 12px; color: #555; margin-top: 40px; }
+.footer { text-align: center; margin-top: 20px; font-size: 14px; color: #555; }
+.alta { background-color:#FF9999; color:#000; font-weight:bold; }
+.media { background-color:#FFF3B0; color:#000; font-weight:bold; }
+.baja { background-color:#B5EAD7; color:#000; font-weight:bold; }
+.legend { margin-top: 10px; font-size: 13px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+.legend .item { display:flex; align-items:center; gap:8px; }
+.legend .swatch { width:18px; height:18px; border-radius:4px; border:1px solid #999; }
+.legend .swatch.alta { background:#FF9999; }
+.legend .swatch.media { background:#FFF3B0; }
+.legend .swatch.baja { background:#B5EAD7; }
+.hr { height:1px; background:#ddd; margin:16px 0; }
+#contador-ausentes { color: red; font-weight: bold; }
+
+/* Estilos para el modal de edición */
+.modal-overlay {
+    display: none; position: fixed; z-index: 1000; left: 0; top: 0;
+    width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6);
+}
+.modal-content {
+    background-color: #fefefe; margin: 5% auto; padding: 25px;
+    border: 1px solid #888; width: 80%; max-width: 800px; border-radius: 10px;
+}
+.modal-content h2 { color: #5b037f; }
+.editor-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+#person-list { list-style-type: none; padding: 0; margin: 0; height: 300px; overflow-y: auto; border: 1px solid #ccc; }
+#person-list li { padding: 8px; cursor: pointer; border-bottom: 1px solid #eee; }
+#person-list li:hover { background-color: #f0f0f0; }
+#person-list li.selected { background-color: #862a91; color: white; font-weight: bold; }
+.station-checkboxes { column-count: 2; }
+.station-checkboxes label { display: block; margin-bottom: 5px; }
+</style>
+</head>
+<body>
+
+<header>Rotaciones AVCR</header>
+
+<div class="container">
+    <div id="control-panel" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 20px; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
+        <div id="context-selector-div">
+            <label for="context-selector" style="font-weight: bold; color: #555; font-size: 15px;">Línea/Producto:</label>
+            <select id="context-selector" style="padding: 5px; font-size: 14px; margin: 0; background-color: #5b037f; color: white; border: none; border-radius: 4px;">
+                <option value="NC Trek NEO_1.4">NC Trek NEO - 1.4</option>
+                <option value="NC Trek_1.5">NC Trek - 1.5</option>
+            </select>
+        </div>
+        <div id="action-buttons">
+            <button onclick="generarRotacion()">Rotación</button>
+            <button onclick="generarMedioDia()">10:00</button>
+            <button onclick="descargarImagen()">Imagen</button>
+            <button onclick="copiarLista()">Copiar</button>
+            <button onclick="openDbEditor()" style="background-color: #008f39;">Editar Base de Datos</button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+            <div id="semana-tracker" style="display: flex; gap: 8px; text-align: center; border: 1px solid #ddd; padding: 2px 5px; border-radius: 4px;">
+                <div class="dia-tracker"><b style="font-size: 12px; color: #555;">L</b><br><span id="pct-L" contenteditable="true" style="font-size: 14px; font-weight: bold; padding: 0 2px; border-radius: 3px;"></span></div>
+                <div class="dia-tracker"><b style="font-size: 12px; color: #555;">M</b><br><span id="pct-M" contenteditable="true" style="font-size: 14px; font-weight: bold; padding: 0 2px; border-radius: 3px;"></span></div>
+                <div class="dia-tracker"><b style="font-size: 12px; color: #555;">K</b><br><span id="pct-K" contenteditable="true" style="font-size: 14px; font-weight: bold; padding: 0 2px; border-radius: 3px;"></span></div>
+                <div class="dia-tracker"><b style="font-size: 12px; color: #555;">J</b><br><span id="pct-J" contenteditable="true" style="font-size: 14px; font-weight: bold; padding: 0 2px; border-radius: 3px;"></span></div>
+                <div class="dia-tracker"><b style="font-size: 12px; color: #555;">V</b><br><span id="pct-V" contenteditable="true" style="font-size: 14px; font-weight: bold; padding: 0 2px; border-radius: 3px;"></span></div>
+            </div>
+            <div>
+                <label for="fecha-excepcion" style="font-weight: bold; color: #555; font-size: 15px;">Días sin Excepción:</label>
+                <input type="date" id="fecha-excepcion" style="padding: 4px; font-size: 14px; margin: 0 5px;">
+                <span id="contador-dias" style="font-weight: bold; font-size: 20px; color: #5b037f;"></span>
+            </div>
+        </div>
+    </div>
+    
+    <div id="rotacion-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #862a91; margin-bottom: 10px;">
+        <h2 style="border-bottom: none; margin: 0; padding-bottom: 5px;">Rotación</h2>
+        <div id="contador-personal" style="font-weight: bold; padding-bottom: 5px;"></div>
+    </div>
+    <table id="rotacion">
+        <thead>
+            <tr><th>Estación</th><th>TM´s</th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <h2 id="sobrantes-title">TM´s Sobrantes</h2>
+    <table id="sobrantes">
+        <thead><tr><th>Persona</th></tr></thead>
+        <tbody></tbody>
+    </table>
+
+    <h2 id="comentarios-title">Comentarios</h2>
+    <div id="comentarios" contenteditable="true" style="width: 99%; min-height: 60px; border: 1px solid rgb(204, 204, 204); padding: 5px; border-radius: 5px; margin-bottom: 20px;"></div>
+
+    <h2 id="ausentes-title">TM´s Ausentes (Escriba un nombre por línea)</h2>
+    <textarea id="ausentesInput" placeholder="Ejemplo:&#10;Juan&#10;Carlos"></textarea>
+    <div class="helper">No importa mayúsculas/acentos, se corrige automáticamente.</div>
+
+    <div class="hr"></div>
+   <div class="legend">
+    <div class="item"><span class="swatch alta"></span> <span><b>H</b> = High (Alta carga)</span></div>
+    <div class="item"><span class="swatch media"></span> <span><b>M</b> = Medium (Media carga)</span></div>
+    <div class="item"><span class="swatch baja"></span> <span><b>L</b> = Low (Baja carga)</span></div>
+    <div class="item numbers">
+        <span>1 = Cuello</span> • 
+        <span>2 = Hombros</span> • 
+        <span>3 = Codos</span> • 
+        <span>4 = Muñecas</span> • 
+        <span>5 = Manos</span>
+    </div>
+</div>
+
+
+<div class="footer">© 2025 Abbott Vascular - Sistema de Rotaciones NEO Julian Nuñez (Optimizado)</div>
+
+<script>
+/* ========== BASE DE DATOS - AHORA CARGADA DINÁMICAMENTE ========== */
+let database = {}; // Se convierte en variable global
+
+// Datos iniciales si no hay nada guardado en el navegador
+const initialDatabase = {
+    "NC Trek NEO": {       "1.4": {
+            personas: {
+                "Ana":["Marcadores de IM","Fundas"], "Brayner":["Hipotubo","Notch","Leak Test","Empaque"], "Carlos":["Distal Laser","Hidro","Empaque"], "Celia":["IM Necking","Marcadores de IM","Notch","Hipotubo"], "Elizabeth":["IM Necking","Marcadores de IM","Laser de Marcadores"], "Elvia":["OM"], "Estefany":["Plasma","Hidro","Fold"], "Gian Marco":["Notch","Hipotubo","Sidearm"], "Jaqueline":["Sidearm","Coil"], "Jennifer":["Distal Laser","Notch","Hipotubo"], "Jeremy":["Press","Coil","Fundas"], "Johan":["OM","Proximal"], "Jose L.":["Hidro","Plasma","Laser de Marcadores"], "Jose P.":["OM","Plasma","Hidro","Fold"], "Juan":["Notch","Plasma","Hidro"], "Julian":["Fold","Press","Pouch","Empaque"], "Karina":["Laser de Marcadores"], "Kevin":["Marcadores de IM","Proximal","Fold"], "Kervin":["OM","Distal Prep","Distal Laser"], "Keylin":["IM Necking","Marcadores de IM","Laser de Marcadores"], "Leslie":["Leak Test","Plasma","Fold"], "Melania":["OM","Plasma","Hidro"], "Monserrat":["Corte de Balloon","Proximal","Distal Prep","Leak Test"], "Older":["Notch","Plasma","Hidro","Fundas"], "Rebeca":["Marcadores de IM","Distal Prep"], "Sebastian":["Corte de Balloon","Press","Coil","Pouch"], "Sharon":["IM Necking","Marcadores de IM","Laser de Marcadores"], "Stephanie":["Leak Test","Press","Fundas"], "Suchayle":["OM","Distal Laser","Notch","Hipotubo"], "Valeria":["IM Necking","Marcadores de IM","Hipotubo","Sidearm"]
+            },
+            estaciones: {
+                "IM Necking":2, "Marcadores de IM":2, "Laser de Marcadores":2, "OM":2, "Corte de Balloon":1, "Proximal":1, "Distal Prep":2, "Distal Laser":2, "Notch":3, "Hipotubo":2, "Sidearm":1, "Leak Test":1, "Plasma":1, "Hidro":1, "Fold":2, "Fundas":1, "Press":1, "Coil":1, "Pouch":1, "Empaque":1
+            },
+            ordenEstaciones: [
+                "IM Necking", "Marcadores de IM", "Laser de Marcadores", "OM", "Corte de Balloon", "Proximal", "Distal Prep", "Distal Laser", "Notch", "Hipotubo", "Sidearm", "Leak Test", "Plasma", "Hidro", "Fold", "Fundas", "Press", "Coil", "Pouch", "Empaque"
+            ]
+        }
+    },
+    "NC Trek": {
+        "1.5": {
+            personas: {
+                "Maritza": ["Bayoneta", "IM Necking", "Marcadores", "Distal P", "Hipotubo"], "Kimberly": ["Bayoneta", "Sidearm"], "Ligia": ["Bayoneta", "IM Necking", "Marcadores", "Laser de M."], "Rosita": ["IM Necking", "Corte", "Distal P"], "Daniela": ["IM Necking", "Punta", "Fold"], "Jurgen": ["IM Necking"], "Noe": ["IM Necking"], "Yaine": ["Marcadores", "Laser de M.", "Pouch"], "Nicole": ["Marcadores", "Distal P", "Fold"], "Kevin": ["Marcadores", "Punta", "Sidearm"], "Ruben": ["Laser de M.", "Notch", "Fold"], "Susana": ["Laser de M.", "Hipotubo"], "Adrian": ["Laser de M.", "Plasma", "Hidro"], "Jeremy": ["OM Necking", "Midlap", "Pouch", "Empaque"], "Alejandra": ["OM Necking"], "Jose Ovidio": ["OM Necking"], "Yendry": ["OM Necking", "Notch", "Press"], "Kimberly C": ["Midlap", "Proximal", "Hipotubo"], "Miguel": ["Midlap", "Proximal", "Distal P", "Punta", "Plasma", "Hidro"], "Yency": ["Midlap", "Fold"], "Yahaira": ["Midlap", "Press", "Coil", "Pouch"], "Naomy": ["Corte", "Distal L.", "Fold"], "Iris": ["Corte", "Distal P", "Coil"], "Kendall": ["Proximal", "Distal L.", "Plasma", "Hidro", "Fold"], "Andres": ["Proximal", "Distal L.", "LKS"], "Maicol": ["Distal L.", "LKS", "Plasma", "Hidro"], "Fabiola": ["Distal L.", "Notch", "Coil"], "Fernanda": ["Distal L.", "Fundas"], "Sailyn": ["Punta", "Sidearm", "Plasma"], "Andrea": ["Notch", "Hipotubo", "LKS"], "Cinthya": ["Notch", "Press", "Fundas"], "Ana": ["Notch"], "Jose": ["Plasma", "Hidro", "Coil", "Empaque"], "Annie": ["Press", "Empaque", "Fundas"]
+            },
+            estaciones: {
+                "Notch": 3, "IM Necking": 2, "Marcadores": 2, "Laser de M.": 2, "OM Necking": 2, "Midlap": 2, "Distal Prep": 2, "Distal L.": 2, "Hipotubo": 2, "Distal P": 2, "Fold": 2, "Proximal": 1,
+                "Bayoneta": 1, "Corte": 1, "Punta": 1, "Sidearm": 1, "LKS": 1, "Plasma": 1, "Hidro": 1, "Press": 1, "Coil": 1, "Pouch": 1, "Empaque": 1, "Fundas": 1
+            },
+            ordenEstaciones: [
+                "Bayoneta", "IM Necking", "Marcadores", "Laser de M.", "OM Necking", "Midlap", "Corte", "Proximal", "Distal P", "Distal L.", "Punta", "Notch", "Hipotubo", "Sidearm", "LKS", "Plasma", "Hidro", "Fold", "Press", "Coil", "Pouch", "Empaque", "Fundas"
+            ]
+        }
+    }
+};
+
+function loadDatabase() {
+    const savedDb = localStorage.getItem('rotationDatabase');
+    if (savedDb) {
+        try {
+            database = JSON.parse(savedDb);
+        } catch (e) {
+            console.error("Error al cargar la base de datos guardada, usando la inicial.", e);
+            database = initialDatabase;
+        }
+    } else {
+        database = initialDatabase;
+        localStorage.setItem('rotationDatabase', JSON.stringify(database));
+    }
+}
+
+const ergoMap = { 
+    "IM Necking": ["L1"], "Marcadores de IM": ["H5"], "Laser de Marcadores": ["M4"], "OM": ["L2"], "Corte de Balloon": ["H5"], "Proximal": ["L4"], "Distal Prep": ["L4","M4"], "Distal Laser": ["L3"], "Notch": ["L5"], "Hipotubo": ["M4"], "Sidearm": ["L2"], "Leak Test": ["L2"], "Plasma": ["H2"], "Hidro": ["H2"], "Fold": ["M1"], "Press": ["L2"], "Fundas": ["M1"], "Coil": ["M2"], "Pouch": ["L3"], "Empaque": ["M4"], "Bayoneta": ["M4"], "Marcadores": ["H5"], "Laser de M.": ["M4"], "OM Necking": ["L2"], "Midlap": ["L4"], "Corte": ["H5"], "Distal P": ["L4"], "Distal L.": ["L3"], "Punta": ["M5"], "LKS": ["L2"]
+};
+const letraToClase = { H: "alta", M: "media", L: "baja" };
+
+/* ========== VARIABLES DE ESTADO ACTIVO ========== */
+let activePersonas = {}, activeEstaciones = {}, nameIndex = {}, protegidos = [], activeOrdenEstaciones = [];
+let ultimaRotacion = {}, ultimaRotacionPrev = null, historialErgonomico = {}, esVistaMedioDia = false;
+
+/* ========== NORMALIZACIÓN Y UTILIDADES ========== */
+const NFD = /[\u0300-\u036f]/g;
+function norm(s){ return (s||"").toString().normalize("NFD").replace(NFD,"").toLowerCase().replace(/\s+/g," ").trim(); }
+function canonicalize(name){ const key=norm(name); return nameIndex[key]||null; }
+function obtenerAusentes(){ const texto=document.getElementById("ausentesInput").value; return (texto?texto.split(/\r?\n/):[]).map(canonicalize).filter(Boolean); }
+function* combinations(arr, k) { if (k > arr.length || k <= 0) return; if (k === arr.length) { yield arr; return; } if (k === 1) { for (const i of arr) yield [i]; return; } for (let i = 0; i <= arr.length - k; i++) { for (const c of combinations(arr.slice(i + 1), k - 1)) { yield [arr[i], ...c]; } } }
+
+/* ========== GESTIÓN DE ESTADO ========== */
+function getStorageKey(base) {
+    const [familia, linea] = document.getElementById('context-selector').value.split('_');
+    return `${familia}-${linea}-${base}`;
+}
+function guardarRotacion(rot, key){ localStorage.setItem(key, JSON.stringify(rot)); }
+function cargarRotacion(key){ const txt=localStorage.getItem(key); if(txt){ try{ return JSON.parse(txt);}catch(e){return null;} } return null; }
+function guardarHistorial(hist){ localStorage.setItem(getStorageKey('history'), JSON.stringify(hist)); }
+function cargarHistorial(){ const txt=localStorage.getItem(getStorageKey('history')); if(txt){ try{ return JSON.parse(txt);}catch(e){return null;} } return null; }
+
+/* ========== ALGORITMO DE ROTACIÓN (BACKTRACKING MEJORADO + OPTIMIZACIÓN) ========== */
+function esCargaAlta(est) { const tags = ergoMap[est] || []; return tags.some(tag => tag.startsWith('H')); }
+function candidatosPara(est, ausentesSet, asignadosSet){
+    return Object.keys(activePersonas).filter(p => activePersonas[p].includes(est) && !ausentesSet.has(p) && !asignadosSet.has(p));
+}
+
+// Rellena estaciones vacías usando sobrantes (prioriza personas con la habilidad)
+function rellenarEstacionesVacias(rotacion) {
+    const ausentes = new Set(obtenerAusentes());
+    const usadas = new Set(Object.values(rotacion).flat().filter(Boolean));
+    let sobrantes = Object.keys(activePersonas).filter(p => !usadas.has(p) && !ausentes.has(p));
+
+    // Primera pasada: llenar con personas que sí tienen la habilidad
+    for (const est of activeOrdenEstaciones) {
+        const capacidad = activeEstaciones[est] || 0;
+        const asignados = rotacion[est] ? rotacion[est].slice() : [];
+        while (asignados.length < capacidad) {
+            const candIndex = sobrantes.findIndex(p => activePersonas[p].includes(est));
+            if (candIndex === -1) break;
+            const p = sobrantes.splice(candIndex,1)[0];
+            asignados.push(p);
+        }
+        rotacion[est] = asignados;
+    }
+    return rotacion;
+}
+
+// Función que intenta construir una solución dada un orden de estaciones y heurísticas
+function intentarConstruirRotacion(estacionesOrdenadas, ausentesSet) {
+    const rot = {};
+    const asignados = new Set();
+    for (const est of Object.keys(activeEstaciones)) rot[est] = [];
+
+    for (const est of estacionesOrdenadas) {
+        const needed = activeEstaciones[est] || 0;
+        let cand = candidatosPara(est, ausentesSet, asignados);
+        // evitar que una persona repita carga alta consecutiva
+        if (esCargaAlta(est)) { cand = cand.filter(p => { const h = historialErgonomico[p] || []; return !(h.length >= 2 && esCargaAlta(h[0]) && esCargaAlta(h[1])); }); }
+
+        // heurística: ordenar candidatos por menor número de habilidades (protegidos primero) para reservar flexibles
+        cand.sort((a,b) => (activePersonas[a].length - activePersonas[b].length));
+
+        if (cand.length === 0) continue;
+
+        // si hay suficientes candidatos, tomar combinaciones simples (greedy para desempeño)
+        const toTake = Math.min(needed, cand.length);
+        const seleccion = cand.slice(0, toTake);
+        rot[est] = seleccion.slice();
+        seleccion.forEach(p => asignados.add(p));
+    }
+
+    return rot;
+}
+
+// Evalúa una rotación: mayor puntaje = mejor (llenas preferidas y menos sobrantes)
+function evaluarRotacion(rotacion) {
+    const estacionesLlenas = Object.keys(rotacion).filter(e => (rotacion[e]||[]).length >= (activeEstaciones[e]||0)).length;
+    const usadas = new Set(Object.values(rotacion).flat().filter(Boolean).map(p=>p.replace(/ \(T\)$/,'')));
+    const sobrantes = Object.keys(activePersonas).filter(p => !usadas.has(p) && !new Set(obtenerAusentes()).has(p)).length;
+    // penalizar duplicados
+    const assignedAll = Object.values(rotacion).flat().map(p=>p.replace(/ \(T\)$/,''));
+    const duplicates = assignedAll.length - new Set(assignedAll).size;
+
+    // Score: estaciones llenas primero, luego penalizar sobrantes y duplicados
+    return estacionesLlenas * 100 - sobrantes * 10 - duplicates * 50;
+}
+
+// Generador optimizado: hace múltiples intentos y devuelve la mejor solución; siempre rellena al final
+function generarRotacionOptimizada(intentos = 60) {
+    const ausentesSet = new Set(obtenerAusentes());
+    let mejor = null;
+    let mejorScore = -Infinity;
+
+    // preparar orden base de estaciones (criticas primero)
+    const baseOrden = [...activeOrdenEstaciones].slice();
+    baseOrden.sort((a,b) => {
+        const cA = candidatosPara(a, ausentesSet, new Set()).length;
+        const cB = candidatosPara(b, ausentesSet, new Set()).length;
+        if (cA !== cB) return cA - cB; // menos candidatos primero
+        return (esCargaAlta(b)?1:0) - (esCargaAlta(a)?1:0); // alta carga prioritizada
+    });
+
+    for (let i=0;i<intentos;i++) {
+        // aleatorizar levemente el orden para explorar distintas asignaciones
+        const estacionesOrdenadas = baseOrden.slice();
+        if (i % 3 === 0) estacionesOrdenadas.reverse();
+        if (i % 5 === 0) estacionesOrdenadas.sort(() => Math.random() - 0.5);
+
+        const rot = intentarConstruirRotacion(estacionesOrdenadas, ausentesSet);
+        const rotRellenada = rellenarEstacionesVacias(JSON.parse(JSON.stringify(rot)));
+        const score = evaluarRotacion(rotRellenada);
+        if (score > mejorScore) { mejorScore = score; mejor = rotRellenada; }
+    }
+
+    // si no encontró nada razonable, construir rotación greedy final y rellenar
+    if (!mejor) {
+        const greedy = intentarConstruirRotacion(baseOrden, new Set());
+        mejor = rellenarEstacionesVacias(greedy);
+    }
+
+    return { rotacion: mejor };
+}
+
+/* ========== CONTROLADORES DE BOTONES (usando la optimizada) ========== */
+function actualizarHistorial(rotacionGenerada) {
+    for (const est in rotacionGenerada) {
+        for (const personaRaw of rotacionGenerada[est]) {
+            const persona = personaRaw.replace(/ \(T\)$/,'');
+            if (!historialErgonomico[persona]) historialErgonomico[persona] = [];
+            historialErgonomico[persona].unshift(est);
+            historialErgonomico[persona] = historialErgonomico[persona].slice(0, 2);
+        }
+    }
+}
+function generarRotacion(){
+    esVistaMedioDia = false;
+    const { rotacion: nuevaRotacion } = generarRotacionOptimizada(60);
+    ultimaRotacion = nuevaRotacion;
+    ultimaRotacionPrev = null;
+    actualizarHistorial(ultimaRotacion);
+    guardarRotacion(ultimaRotacion, getStorageKey("first"));
+    guardarRotacion(ultimaRotacion, getStorageKey("last"));
+    guardarHistorial(historialErgonomico);
+    actualizarTabla();
+}
+function generarMedioDia(){
+    if(!esVistaMedioDia){
+        const rotacionDeReferencia = JSON.parse(JSON.stringify(ultimaRotacion));
+        if(!rotacionDeReferencia || Object.keys(rotacionDeReferencia).length === 0){
+            alert("Primero genera una rotación inicial con el botón 'Rotación'.");
+            return;
+        }
+        ultimaRotacionPrev = rotacionDeReferencia;
+    }
+    esVistaMedioDia = true;
+
+    let mejorRotacion = null;
+    let mejorPuntaje = -Infinity;
+    const NUM_INTENTOS = 30;
+    for (let i = 0; i < NUM_INTENTOS; i++) {
+        const { rotacion: intento } = generarRotacionOptimizada(20);
+        // queremos maximizar la cantidad de personas que cambian respecto a la prev
+        let personasRotadas = 0;
+        for (const est in intento) {
+            const list = (intento[est]||[]).map(x=>x.replace(/ \(T\)$/,''));
+            const prev = (ultimaRotacionPrev[est]||[]).map(x=>x.replace(/ \(T\)$/,''));
+            for (const p of list) if (!prev.includes(p)) personasRotadas++;
+        }
+        const score = personasRotadas;
+        if (score > mejorPuntaje) { mejorPuntaje = score; mejorRotacion = intento; }
+    }
+
+    ultimaRotacion = mejorRotacion || generarRotacionOptimizada(10).rotacion;
+    actualizarHistorial(ultimaRotacion);
+    guardarRotacion(ultimaRotacion, getStorageKey("last"));
+    guardarHistorial(historialErgonomico);
+    actualizarTabla();
+}
+
+/* ========== INTERFAZ DE USUARIO (UI) ========== */
+function bodyPart(n){ const p = {1:"Cuello",2:"Hombros",3:"Codos",4:"Muñecas",5:"Manos"}; return p[n]||""; }
+function parseTag(t){ const l=t[0], n=parseInt(t.slice(1),10); return {letra:l, numero:n, clase:letraToClase[l]||"otro"}; }
+function tagsForStation(est){ const tags=ergoMap[est]||[]; return tags.map(parseTag); }
+function claseDominante(tags){ let b={s:0,c:"baja"}; for(const t of tags){const s=({H:3,M:2,L:1})[t.letra]||0; if(s>b.s) b={s,c:t.clase};} return b.c; }
+
+function actualizarContadores() {
+    const totalPersonal = Object.keys(activePersonas).length;
+    const numAusentes = obtenerAusentes().length;
+    const presentes = totalPersonal - numAusentes;
+    const contadorDiv = document.getElementById('contador-personal');
+    let ausentesHtml = '';
+    if (numAusentes > 0) ausentesHtml = ` <span id="contador-ausentes">(-${numAusentes} Ausentes)</span>`;
+    let porcentajeHtml = '';
+    if (esVistaMedioDia && presentes > 0) {
+        let numNoRotando = 0;
+        if (ultimaRotacion && ultimaRotacionPrev) {
+            for (const est in ultimaRotacion) {
+                if (ultimaRotacion[est] && ultimaRotacionPrev[est]) {
+                    for (const p of ultimaRotacion[est]) {
+                        if (ultimaRotacionPrev[est].includes(p)) numNoRotando++;
+                    }
+                }
+            }
+        }
+        const numSobrantes = document.querySelectorAll('#sobrantes tbody tr').length;
+        const totalNoRotando = numNoRotando + numSobrantes;
+        const numRotando = presentes - totalNoRotando;
+        const porcentaje = (numRotando / presentes) * 100;
+        const color = porcentaje < 80 ? 'red' : 'green';
+        porcentajeHtml = ` <span id="porcentaje-rotacion" style="margin-left: 15px; color: ${color};">(${porcentaje.toFixed(0)}%)</span>`;
+        const diaSemana = new Date().getDay();
+        if(diaSemana >= 1 && diaSemana <= 5) {
+            const dias = ['L', 'M', 'K', 'J', 'V'];
+            const idDia = dias[diaSemana - 1];
+            const pctSpan = document.getElementById(`pct-${idDia}`);
+            if(pctSpan) {
+                pctSpan.textContent = `${porcentaje.toFixed(0)}%`;
+                actualizarEstilosSemana();
+                guardarDatosSemana();
+            }
+        }
+    }
+    if (contadorDiv) contadorDiv.innerHTML = `${presentes}/${totalPersonal} TM Presentes` + ausentesHtml + porcentajeHtml;
+}
+
+function actualizarDiasSinExcepcion() {
+    const fechaInput = document.getElementById('fecha-excepcion');
+    const contadorSpan = document.getElementById('contador-dias');
+    const fechaSeleccionada = fechaInput.value;
+    if (!fechaSeleccionada) {
+        contadorSpan.textContent = '0';
+        return;
+    }
+    localStorage.setItem('fechaExcepcion', fechaSeleccionada);
+    const fechaInicio = new Date(fechaSeleccionada);
+    const fechaFin = new Date();
+    fechaInicio.setUTCHours(0, 0, 0, 0);
+    fechaFin.setUTCHours(0, 0, 0, 0);
+    const diferenciaMs = fechaFin.getTime() - fechaInicio.getTime();
+    const diferenciaDias = Math.floor(diferenciaMs / (1000 * 60 * 60 * 24));
+    contadorSpan.textContent = diferenciaDias >= 0 ? diferenciaDias : 0;
+}
+
+function actualizarEstilosEstaciones() {
+    document.querySelectorAll("#rotacion tbody tr").forEach(row => {
+        const estCell = row.cells[0];
+        const peopleCell = row.cells[1];
+        const est = estCell.textContent.replace(/^\[[^\]]+\]\s*/, "");
+        if (!activeEstaciones[est]) return;
+        const required = activeEstaciones[est];
+        const assignedText = peopleCell.textContent.trim();
+        const assigned = assignedText.includes("(sin asignar)") || assignedText === "" ? 0 : (assignedText.match(/-/g) || []).length + 1;
+        if (assigned < required) {
+            estCell.style.color = 'red';
+            estCell.style.fontWeight = 'bold';
+        } else {
+            estCell.style.color = '';
+            estCell.style.fontWeight = '';
+        }
+    });
+}
+const getDuplicateAssignments = () => {
+    const assignments = new Map();
+    const duplicates = new Set();
+    for (const station in ultimaRotacion) {
+        for (const person of ultimaRotacion[station]) {
+            const p = person.replace(/ \(T\)$/,'');
+            if (assignments.has(p)) {
+                duplicates.add(p);
+            } else {
+                assignments.set(p, station);
+            }
+        }
+    }
+    return duplicates;
+};
+
+function actualizarCeldaEditada(event) {
+    const td = event.target;
+    const est = td.parentElement.cells[0].textContent.replace(/^\[[^\]]+\]\s*/, "");
+    const oldHtml = td.innerHTML;
+    const nombres = td.textContent.split('-').map(s => s.trim()).filter(Boolean);
+
+    for (const nombre of nombres) {
+        const personaCanonica = canonicalize(nombre);
+        if (personaCanonica && !activePersonas[personaCanonica].includes(est)) {
+            if (!confirm(`La persona "${nombre}" no tiene esta estación asignada. ¿Deseas colocarla como entrenamiento?`)) {
+                td.innerHTML = oldHtml;
+                return;
+            }
+        }
+    }
+    const personasConocidas = nombres.map(canonicalize).filter(Boolean);
+    
+    for(const nombre of personasConocidas){
+        let count = nombres.filter(n => canonicalize(n) === nombre).length;
+        if(count > 1) {
+             if(!confirm(`Estás asignando a ${nombre} varias veces en la misma celda. ¿Quieres seguir?`)){
+                td.innerHTML = oldHtml; return;
+            } break;
+        }
+        for(const station in ultimaRotacion){
+            if(station !== est && ultimaRotacion[station].includes(nombre)){
+                if(!confirm(`Estás asignando a ${nombre} en 2 estaciones. ¿Quieres seguir?`)){
+                    td.innerHTML = oldHtml; return;
+                } break;
+            }
+        }
+    }
+    
+    if (activeEstaciones[est]) ultimaRotacion[est] = personasConocidas;
+    const capacity = activeEstaciones[est] || 0;
+    const duplicates = getDuplicateAssignments();
+    
+    const personasHtml = nombres.map((nombre, index) => {
+        const personaCanonica = canonicalize(nombre);
+        if (personaCanonica && duplicates.has(personaCanonica)) return `<span style="color:darkred; font-weight:bold;">${personaCanonica}</span>`;
+        if (!personaCanonica) return `<span style="color:red; font-weight:bold;">${nombre}</span>`;
+        if (esVistaMedioDia && ultimaRotacionPrev && ultimaRotacionPrev[est]?.includes(personaCanonica)) return `<span style="color:red; font-weight:bold;">${personaCanonica}</span>`;
+        if (index >= capacity) return `<span style="color:orange; font-weight:bold;">${personaCanonica}</span>`;
+        return personaCanonica;
+    }).join(' - ');
+
+    td.innerHTML = (nombres.length === 0) ? `<span style="color: red;">(sin asignar)</span>` : personasHtml;
+    guardarRotacion(ultimaRotacion, getStorageKey("last"));
+    actualizarSobrantes();
+    actualizarEstilosEstaciones();
+    actualizarContadores();
+}
+
+
+function actualizarTabla(){
+    const tbody=document.querySelector("#rotacion tbody");
+    tbody.innerHTML="";
+    if (!activeOrdenEstaciones) return;
+    const duplicates = getDuplicateAssignments();
+    for(const est of activeOrdenEstaciones) {
+        const pers = ultimaRotacion[est] || [];
+        const tr=document.createElement("tr");
+        const tags = tagsForStation(est);
+        const etiqueta = tags.length ? `[${tags.map(t=>`${t.letra}${t.numero}`).join("/")}] ` : "";
+        const tdEst=document.createElement("td");
+        tdEst.textContent = `${etiqueta}${est}`;
+        if(tags.length){ tdEst.classList.add(claseDominante(tags)); }
+        const tdPers=document.createElement("td");
+        tdPers.contentEditable="true";
+        let personasHtml;
+        if (pers.length === 0) {
+            personasHtml = `<span style="color: red;">(sin asignar)</span>`;
+        } else {
+            const capacity = activeEstaciones[est] || 0;
+            personasHtml = pers.map((p, index) => {
+                if(duplicates.has(p.replace(/ \(T\)$/,''))) return `<span style="color:darkred; font-weight:bold;">${p}</span>`;
+                if (esVistaMedioDia && ultimaRotacionPrev && ultimaRotacionPrev[est]?.includes(p)) return `<span style="color:red; font-weight:bold;">${p}</span>`;
+                if (index >= capacity) return `<span style="color:orange; font-weight:bold;">${p}</span>`;
+                return p;
+            }).join(' - ');
+        }
+        tdPers.innerHTML = personasHtml;
+        tdPers.addEventListener("input", actualizarSobrantes);
+        tdPers.addEventListener("blur", actualizarCeldaEditada);
+        tr.appendChild(tdEst);
+        tr.appendChild(tdPers);
+        tbody.appendChild(tr);
+    }
+    actualizarSobrantes();
+    actualizarEstilosEstaciones();
+    actualizarContadores();
+}
+
+function actualizarSobrantes(){
+    const usadas = new Set();
+    document.querySelectorAll("#rotacion tbody tr").forEach(row=>{
+        const est=row.cells[0].textContent.replace(/^\[[^\]]+\]\s*/,"");
+        const cap=activeEstaciones[est];
+        if (!cap) return;
+        const td=row.cells[1];
+        const parts=td.textContent.split("-").map(s=>s.trim()).filter(Boolean);
+        const canon=parts.map(canonicalize).filter(Boolean);
+        const peopleCount = td.textContent.trim().includes('(sin asignar)') ? 0 : (canon.length);
+        if(peopleCount > cap) { td.classList.add("over"); td.title=`Sobrecupo: ${canon.length}/${cap}.`; }
+        else { td.classList.remove("over"); td.title=""; }
+        canon.forEach(p=>usadas.add(p));
+    });
+    const ausentes=new Set(obtenerAusentes());
+    const sobrantes=Object.keys(activePersonas).filter(p=>!usadas.has(p)&&!ausentes.has(p));
+    const tbodyS=document.querySelector("#sobrantes tbody");
+    tbodyS.innerHTML="";
+    sobrantes.forEach(p=>{
+        const tr=document.createElement("tr");
+        tr.innerHTML=`<td>${p}</td>`;
+        tbodyS.appendChild(tr);
+    });
+}
+
+function descargarImagen() {
+    const mainContainer = document.querySelector('.container');
+    const clonedContainer = mainContainer.cloneNode(true);
+    clonedContainer.style.boxShadow = 'none';
+    const controlPanel = clonedContainer.querySelector('#control-panel');
+    if (controlPanel) {
+        const contextSelectorDiv = controlPanel.querySelector('#context-selector-div');
+        if (contextSelectorDiv) contextSelectorDiv.style.display = 'none';
+        const actionButtons = clonedContainer.querySelector('#action-buttons');
+        if (actionButtons) actionButtons.style.display = 'none';
+        const fechaInput = controlPanel.querySelector('#fecha-excepcion');
+        if (fechaInput) fechaInput.style.display = 'none';
+        controlPanel.style.justifyContent = 'center';
+    }
+    const sobrantesTitle = clonedContainer.querySelector('#sobrantes-title');
+    const sobrantesTable = clonedContainer.querySelector('#sobrantes');
+    if(sobrantesTitle) sobrantesTitle.style.display = 'none';
+    if(sobrantesTable) sobrantesTable.style.display = 'none';
+    const ausentesTitle = clonedContainer.querySelector('#ausentes-title');
+    const ausentesTextarea = clonedContainer.querySelector('#ausentesInput');
+    const ausentesHelper = clonedContainer.querySelector('.helper');
+    if(ausentesTitle) ausentesTitle.style.display = 'none';
+    if(ausentesTextarea) ausentesTextarea.style.display = 'none';
+    if(ausentesHelper) ausentesHelper.style.display = 'none';
+    clonedContainer.querySelectorAll('#rotacion td:first-child').forEach(cell => {
+        cell.textContent = cell.textContent.replace(/^\[[^\]]+\]\s*/, "");
+    });
+    document.body.appendChild(clonedContainer);
+    html2canvas(clonedContainer, { scale: 2 }).then(canvas => {
+        const imgUrl = canvas.toDataURL("image/png");
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`<html<head><title>Rotación Generada</title></head><body style="margin:0;"><img src="${imgUrl}" style="width:100%;"></body></html>`);
+        printWindow.document.close();
+        printWindow.focus();
+        document.body.removeChild(clonedContainer);
+    });
+}
+
+async function copiarLista(){ let t=""; for(const r of document.querySelectorAll("#rotacion tbody tr")){ t+=`${r.cells[0].textContent}: ${r.cells[1].textContent}\n`; } try{await navigator.clipboard.writeText(t);alert("Rotación copiada.");} catch(e){const ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);alert("Copiada (alternativo).");} }
+
+// --- LÓGICA DE SEGUIMIENTO SEMANAL ---
+const dias = ['L', 'M', 'K', 'J', 'V'];
+function actualizarEstilosSemana() {
+    dias.forEach(dia => {
+        const span = document.getElementById(`pct-${dia}`);
+        if(span) {
+            const valor = parseInt(span.textContent.replace('%', ''), 10);
+            if (!isNaN(valor)) {
+                span.style.color = valor < 80 ? 'red' : 'green';
+            } else {
+                span.style.color = '';
+            }
+        }
+    });
+}
+function guardarDatosSemana() {
+    const datos = {};
+    dias.forEach(dia => {
+        const span = document.getElementById(`pct-${dia}`);
+        if (span) datos[dia] = span.textContent;
+    });
+    localStorage.setItem(getStorageKey('semanaPct'), JSON.stringify(datos));
+}
+function cargarDatosSemana() {
+    const datosGuardados = localStorage.getItem(getStorageKey('semanaPct'));
+    if (datosGuardados) {
+        const datos = JSON.parse(datosGuardados);
+        dias.forEach(dia => {
+            const span = document.getElementById(`pct-${dia}`);
+            if (span && datos[dia]) {
+                span.textContent = datos[dia];
+            } else if (span) {
+                span.textContent = '0%';
+            }
+        });
+    } else {
+         dias.forEach(dia => {
+            const span = document.getElementById(`pct-${dia}`);
+            if (span) span.textContent = '0%';
+        });
+    }
+    actualizarEstilosSemana();
+}
+
+// --- LÓGICA DE CAMBIO DE CONTEXTO E INICIALIZACIÓN ---
+function switchContext() {
+    const [familia, linea] = document.getElementById('context-selector').value.split('_');
+    const contextData = database[familia]?.[linea];
+    if (!contextData) {
+        alert("La combinación seleccionada no es válida o no tiene datos configurados.");
+        return;
+    }
+    activePersonas = contextData.personas;
+    activeEstaciones = contextData.estaciones;
+    activeOrdenEstaciones = contextData.ordenEstaciones || Object.keys(activeEstaciones);
+    nameIndex = Object.keys(activePersonas).reduce((acc, p) => { acc[norm(p)] = p; return acc; }, {});
+    protegidos = Object.keys(activePersonas).filter(p => activePersonas[p].length === 1);
+    esVistaMedioDia = false;
+    ultimaRotacion = cargarRotacion(getStorageKey("last")) || {};
+    ultimaRotacionPrev = null;
+    historialErgonomico = cargarHistorial() || {};
+    document.getElementById('ausentesInput').value = '';
+    document.getElementById('comentarios').innerHTML = '';
+    if (Object.keys(ultimaRotacion).length === 0) {
+        for(const est of activeOrdenEstaciones) ultimaRotacion[est] = [];
+    }
+    cargarDatosSemana();
+    actualizarTabla();
+}
+
+/* ========== LÓGICA DEL EDITOR DE BASE DE DATOS ========== */
+let selectedPersonForEditing = null;
+
+function getCurrentContext() {
+    const [familia, linea] = document.getElementById('context-selector').value.split('_');
+    return { familia, linea, data: database[familia]?.[linea] };
+}
+
+function openDbEditor() {
+    const { familia, linea, data } = getCurrentContext();
+    if (!data) {
+        alert("Contexto no válido.");
+        return;
+    }
+    document.getElementById('editor-context-title').textContent = `${familia} - ${linea}`;
+    
+    const personList = document.getElementById('person-list');
+    personList.innerHTML = '';
+    
+    const personNames = Object.keys(data.personas).sort();
+    personNames.forEach(name => {
+        const li = document.createElement('li');
+        li.textContent = name;
+        li.onclick = () => selectPersonForEditing(name);
+        personList.appendChild(li);
+    });
+
+    if (personNames.length > 0) {
+        selectPersonForEditing(personNames[0]);
+    } else {
+        document.getElementById('person-name-input').value = '';
+        document.getElementById('station-checkboxes').innerHTML = '';
+    }
+
+    document.getElementById('db-editor-modal').style.display = 'block';
+}
+
+function closeDbEditor() {
+    document.getElementById('db-editor-modal').style.display = 'none';
+}
+
+function selectPersonForEditing(name) {
+    selectedPersonForEditing = name;
+    
+    // Resaltar en la lista
+    document.querySelectorAll('#person-list li').forEach(li => {
+        li.classList.toggle('selected', li.textContent === name);
+    });
+
+    const { data } = getCurrentContext();
+    const personSkills = data.personas[name] || [];
+    document.getElementById('person-name-input').value = name;
+
+    const stationCheckboxes = document.getElementById('station-checkboxes');
+    stationCheckboxes.innerHTML = '';
+    const allStations = Object.keys(data.estaciones);
+
+    allStations.forEach(station => {
+        const isChecked = personSkills.includes(station);
+        const label = document.createElement('label');
+        label.innerHTML = `<input type="checkbox" value="${station}" ${isChecked ? 'checked' : ''}> ${station}`;
+        stationCheckboxes.appendChild(label);
+    });
+}
+
+function addNewPerson() {
+    const newName = prompt("Introduce el nombre de la nueva persona:");
+    if (!newName || newName.trim() === "") return;
+
+    const { familia, linea, data } = getCurrentContext();
+    if (data.personas[newName]) {
+        alert("Esta persona ya existe.");
+        return;
+    }
+    data.personas[newName] = []; // Añadir con cero estaciones
+    openDbEditor(); // Refrescar el editor
+    selectPersonForEditing(newName);
+}
+
+function deleteSelectedPerson() {
+    if (!selectedPersonForEditing) {
+        alert("Por favor, selecciona una persona para eliminar.");
+        return;
+    }
+    if (confirm(`¿Estás seguro de que quieres eliminar a ${selectedPersonForEditing}?`)) {
+        const { familia, linea, data } = getCurrentContext();
+        delete data.personas[selectedPersonForEditing];
+        selectedPersonForEditing = null;
+        openDbEditor(); // Refrescar el editor
+    }
+}
+
+function saveDbChanges() {
+    const { familia, linea, data } = getCurrentContext();
+    
+    // 1. Guardar los cambios de la persona actualmente seleccionada
+    const currentName = selectedPersonForEditing;
+    const newName = document.getElementById('person-name-input').value.trim();
+    if (!newName) {
+        alert("El nombre no puede estar vacío.");
+        return;
+    }
+
+    const newSkills = [];
+    document.querySelectorAll('#station-checkboxes input:checked').forEach(checkbox => {
+        newSkills.push(checkbox.value);
+    });
+    
+    // Si el nombre cambió, elimina el antiguo y crea el nuevo
+    if (currentName !== newName) {
+        if (data.personas[newName]) {
+            alert("El nuevo nombre ya existe. Por favor, elige otro.");
+            return;
+        }
+        delete data.personas[currentName];
+        data.personas[newName] = newSkills;
+    } else {
+        data.personas[currentName] = newSkills;
+    }
+
+    // 2. Guardar toda la base de datos en localStorage
+    localStorage.setItem('rotationDatabase', JSON.stringify(database));
+    
+    // 3. Cerrar y recargar la aplicación
+    closeDbEditor();
+    alert("¡Base de datos actualizada! El sistema se recargará con los nuevos datos.");
+    switchContext(); // Recarga la vista principal con los datos adecuados
+}
+
+document.addEventListener("DOMContentLoaded",()=>{
+    loadDatabase();
+    document.getElementById('context-selector').addEventListener('change', switchContext);
+    document.getElementById("ausentesInput").addEventListener("input", () => {
+        actualizarSobrantes();
+        actualizarEstilosEstaciones();
+        actualizarContadores();
+    });
+    const fechaInput = document.getElementById('fecha-excepcion');
+    fechaInput.addEventListener('change', actualizarDiasSinExcepcion);
+    const fechaGuardada = localStorage.getItem('fechaExcepcion');
+    if(fechaGuardada) fechaInput.value = fechaGuardada;
+    
+    dias.forEach(dia => {
+        const span = document.getElementById(`pct-${dia}`);
+        if(span) span.addEventListener('blur', () => {
+            guardarDatosSemana();
+            actualizarEstilosSemana();
+        });
+    });
+
+    switchContext();
+    actualizarDiasSinExcepcion();
+});
+</script>
+
+<div id="db-editor-modal" class="modal-overlay">
+    <div class="modal-content">
+        <h2>Editor de Base de Datos - <span id="editor-context-title"></span></h2>
+        <div class="editor-grid">
+            <div>
+                <h3>Personal</h3>
+                <ul id="person-list"></ul>
+                <button onclick="addNewPerson()">Añadir Persona</button>
+                <button onclick="deleteSelectedPerson()">Eliminar Seleccionado</button>
+            </div>
+            <div>
+                <h3>Detalles</h3>
+                <label for="person-name-input">Nombre:</label>
+                <input type="text" id="person-name-input" style="width: 95%; padding: 5px; margin-bottom: 15px;">
+                
+                <h4>Estaciones Asignadas</h4>
+                <div id="station-checkboxes" class="station-checkboxes">
+                    </div>
+            </div>
+        </div>
+        <hr>
+        <button onclick="saveDbChanges()" style="background-color: #008f39;">Guardar Cambios y Recargar</button>
+        <button onclick="closeDbEditor()">Cancelar</button>
+    </div>
+</div>
+
+</body>
+</html>
