@@ -1,0 +1,1971 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>RotApp AVCR - Sistema de Gestión de Rotaciones</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ========== GENERAL & LAYOUT ========== */
+:root {
+    --primary-color: #5b037f;
+    --secondary-color: #862a91;
+    --background-gradient: linear-gradient(90deg, #027bc5, #83006e);
+    --light-gray: #f8f9fa;
+    --text-color: #333;
+    --border-color: #ccc;
+
+    --yo-mejoro: #FFF59D; /* amarillo */
+    --yo-reconozco: #FFCDD2; /* rojo claro */
+    --yo-anticipo: #C8E6C9; /* verde claro */
+    --yo-cumplo: #E1BEE7; /* morado claro */
+    --yo-respeto: #B3E5FC; /* celeste claro */
+
+    --good: #1a7f2f;
+    --bad: #c92a2a;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(90deg, #027bc5, #83006e);
+    color: #2c3e50;
+    line-height: 1.6;
+    font-size: 14px;
+}
+
+header {
+    background: linear-gradient(90deg, #5b037f 0%, #862a91 100%);
+    color: white;
+    text-align: center;
+    padding: 25px 0;
+    font-size: 28px;
+    font-weight: 700;
+    box-shadow: 0 10px 30px rgba(0, 102, 204, 0.25), 0 4px 12px rgba(0, 102, 204, 0.15);
+    letter-spacing: 0.5px;
+}
+
+.page-wrapper {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    width: 95%;
+    max-width: 1600px;
+    margin: 20px auto;
+}
+
+@media (min-width: 1024px) {
+    .page-wrapper {
+        grid-template-columns: 1fr;
+        max-width: 900px;
+    }
+}
+
+.main-content, .sidebar {
+    background: #fafbfc;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e8eef7;
+}
+
+h2 {
+    color: #5b037f;
+    border-bottom: 3px solid #5b037f;
+    padding-bottom: 10px;
+    margin-top: 24px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    font-size: 18px;
+    letter-spacing: 0.3px;
+}
+
+h3, h4 {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+/* ========== CONTROL PANEL ========== */
+.control-panel {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding: 18px;
+    background-color: #fafbfc;
+    border-radius: 10px;
+    border: 1px solid #e8eef7;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+body.presentation-mode .control-panel { display: none; }
+
+.control-group { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+#context-selector {
+    padding: 8px; font-size: 14px; background-color: var(--primary-color);
+    color: white; border: none; border-radius: 4px; font-weight: bold;
+}
+button {
+    background: linear-gradient(135deg, #5b037f 0%, #862a91 100%); 
+    color: white; border: none; padding: 10px 18px;
+    font-size: 14px; cursor: pointer; border-radius: 6px; transition: all 0.2s ease;
+    display: inline-flex; align-items: center; gap: 8px;
+    font-weight: 500;
+    box-shadow: 0 6px 16px rgba(91, 3, 127, 0.2), 0 2px 4px rgba(91, 3, 127, 0.15);
+}
+button:hover { 
+    background: linear-gradient(135deg, #4a0268 0%, #6f237f 100%);
+    box-shadow: 0 10px 24px rgba(91, 3, 127, 0.3), 0 4px 8px rgba(91, 3, 127, 0.25);
+    transform: translateY(-2px);
+}
+button:active { transform: translateY(0); }
+button i { font-size: 1.1em; }
+button.presentation-btn { background: #6c757d; box-shadow: 0 6px 16px rgba(108, 117, 125, 0.2), 0 2px 4px rgba(108, 117, 125, 0.15); }
+button.presentation-btn:hover { background: #5a6268; box-shadow: 0 10px 24px rgba(108, 117, 125, 0.3), 0 4px 8px rgba(108, 117, 125, 0.25); }
+button.db-editor-btn { background: #00a86b; box-shadow: 0 6px 16px rgba(0, 165, 107, 0.2), 0 2px 4px rgba(0, 165, 107, 0.15); }
+button.db-editor-btn:hover { background: #008555; box-shadow: 0 10px 24px rgba(0, 165, 107, 0.3), 0 4px 8px rgba(0, 165, 107, 0.25); }
+
+/* ========== TABLES ========== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #e8eef7;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+th, td { border-bottom: 1px solid #e8eef7; padding: 14px 12px; text-align: left; }
+th { background-color: #d5dce8; color: #1a2332; font-weight: 600; border-bottom: 2px solid #c5cfe0; }
+th:first-child, td:first-child { text-align: left; padding-left: 16px; }
+th:last-child, td:last-child { text-align: center; padding-right: 16px; }
+#rotacion tbody tr { transition: background-color 0.15s ease; }
+#rotacion tbody tr:nth-child(even) { background-color: #e8ecf1; }
+#rotacion tbody tr:nth-child(odd) { background-color: #dfe6f0; }
+#rotacion tbody tr:hover { background-color: #d5dce8; }
+td[contenteditable="true"] { background: #e8ecf1; outline: none; border: 1px solid #c5cfe0; border-radius: 4px; padding: 10px; color: #1a2332; font-weight: 500; }
+td[contenteditable="true"]:nth-child(even) { background: #dfe6f0; }
+body.presentation-mode td[contenteditable="true"] { background: transparent; border: none; }
+
+/* Cell styles */
+.alta { background-color:#FFE5E5; color:#c92a2a; font-weight: 600; border-radius: 4px; padding: 4px 8px; }
+.media { background-color:#FFF8DC; color:#d97706; font-weight: 600; border-radius: 4px; padding: 4px 8px; }
+.baja { background-color:#E8F8F5; color:#00a86b; font-weight: 600; border-radius: 4px; padding: 4px 8px; }
+td.station-name { font-weight: 600; }
+td.station-name[title] {
+    cursor: help;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+}
+.unassigned { background-color: #fff0f0 !important; }
+.unassigned span { color: red; font-weight: bold; }
+
+/* ========== SIDEBAR ELEMENTS ========== */
+body.presentation-mode .sidebar .hide-in-presentation { display: none; }
+#sobrantes { display: none; }
+#sobrantes-title { display: none; }
+#yo-seccion { display: none; }
+.print-hide { display: none !important; }
+textarea { 
+    width: 100%; 
+    box-sizing: border-box; 
+    height: 100px; 
+    font-size: 14px; 
+    padding: 12px; 
+    border: 1px solid #e8eef7; 
+    border-radius: 6px; 
+    resize: vertical;
+    font-family: inherit;
+    transition: border-color 0.2s ease;
+}
+textarea:focus { border-color: #5b037f; outline: none; box-shadow: 0 0 0 3px rgba(91, 3, 127, 0.1); }
+.helper { font-size: 13px; color: #666; margin-top: 6px; font-weight: 400; }
+
+/* ========== YO... BOXES ========== */
+#yo-seccion { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 6px; }
+.yo-box { 
+    padding: 14px; 
+    border-radius: 8px; 
+    min-height: 54px; 
+    display: flex; 
+    align-items: center; 
+    gap: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+.yo-box .label { 
+    font-weight: 600; 
+    width: 140px;
+    white-space: nowrap;
+}
+.yo-box .content { 
+    flex: 1; 
+    min-height: 32px; 
+    outline: none;
+    padding: 4px 0;
+    font-size: 14px;
+}
+.yo-mejoro { background: var(--yo-mejoro); }
+.yo-reconozco { background: var(--yo-reconozco); }
+.yo-anticipo { background: var(--yo-anticipo); }
+.yo-cumplo { background: var(--yo-cumplo); }
+.yo-respeto { background: var(--yo-respeto); }
+
+/* ========== LEGEND & FOOTER ========== */
+.legend { 
+    margin-top: 24px; 
+    font-size: 14px; 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+    gap: 12px;
+    padding: 16px;
+    background: #fafbfc;
+    border-radius: 10px;
+    border: 1px solid #e8eef7;
+}
+.legend .item { 
+    display: flex; 
+    align-items: center; 
+    gap: 10px;
+    padding: 8px;
+    border-radius: 6px;
+    background: #f5f6f8;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.legend .swatch { 
+    width: 20px; 
+    height: 20px; 
+    border-radius: 6px; 
+    border: 1px solid rgba(0, 0, 0, 0.1); 
+    flex-shrink: 0;
+}
+.legend .swatch.alta { background: #FFE5E5; }
+.legend .swatch.media { background: #FFF8DC; }
+.legend .swatch.baja { background: #E8F8F5; }
+.footer { 
+    text-align: center; 
+    margin-top: 30px; 
+    font-size: 13px; 
+    color: #666; 
+    padding: 20px;
+    border-top: 1px solid #e8eef7;
+    background: #f8fafb;
+    border-radius: 0 0 12px 12px;
+}
+
+/* ========== MODAL ========== */
+.modal-overlay { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0, 0, 0, 0.5); }
+.modal-content { background-color: #fafbfc; margin: 5% auto; padding: 32px; border: 1px solid #e8eef7; width: 90%; max-width: 900px; border-radius: 12px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25), 0 10px 30px rgba(0, 0, 0, 0.15); }
+.modal-content img { width:100%; height:auto; display:block; border-radius:6px; }
+.small-muted { font-size:12px; color:#666; margin-top:8px; }
+
+/* Modal historial (moved from body) */
+#historial-modal { position: fixed; z-index: 2000; background: rgba(0,0,0,0.6); left: 0; top: 0; width: 100%; height: 100%; }
+#historial-modal .modal-content { animation: fadeIn 0.25s ease-out; max-width: 500px; }
+@keyframes fadeIn { from { opacity:0; transform:scale(0.93); } to { opacity:1; transform:scale(1); } }
+.historial-item { padding:6px 0; border-bottom:1px solid #eee; }
+.historial-item span { font-weight: bold; }
+
+.hist-person-card { padding: 10px; border: 1px solid #eee; border-radius: 6px; background: #fff; margin-bottom: 10px; }
+.hist-person-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+
+/* Opcional: estilos sencillos para la lista del editor */
+.editor-grid { display:grid; grid-template-columns: 280px 1fr; gap:18px; }
+#person-list { list-style:none; padding:0; margin:0; max-height:350px; overflow:auto; border:1px solid #ddd; border-radius:6px; }
+#person-list li { padding:8px 10px; cursor:pointer; border-bottom:1px solid #eee; }
+#person-list li.selected { background:#f0f8ff; font-weight:700; }
+.station-checkboxes label { display:block; margin-bottom:6px; }
+
+</style>
+</head>
+<body>
+
+<header>RotApp AVCR - Sistema de Gestión de Rotaciones</header>
+
+<div class="control-panel">
+    <div class="control-group">
+        <label for="context-selector"><strong>Línea/Producto:</strong></label>
+        <select id="context-selector">
+            <option value="NC Trek NEO_1.4">NC Trek NEO - 1.4</option>
+            <option value="NC Trek_1.5">NC Trek - 1.5</option>
+            <option value="OTW_1.4">OTW - 1.4</option>
+
+
+        </select>
+    </div>
+    <div class="control-group">
+        <button onclick="generarRotacion()"><i class="fa-solid fa-arrows-rotate"></i>Rotación</button><button id="btnAuditoria" onclick="generarAuditoriaPDF()" class="boton-accion">
+    📄 Generar Auditoría del Día
+</button>
+        <button onclick="volverARotacion()"><i class="fa-solid fa-undo"></i>Volver a Rotación</button>
+        <button onclick="generarMedioDia()"><i class="fa-solid fa-clock"></i>10:00</button>
+        <button onclick="descargarImagen()"><i class="fa-solid fa-camera"></i>Imagen</button>
+        <button onclick="copiarLista()"><i class="fa-solid fa-copy"></i>Copiar</button>
+        <button onclick="marcarAusenteSeleccionados()" title="Marcar como ausente a los seleccionados" style="background:#6c757d;"><i class="fa-solid fa-user-slash"></i>Marcar ausentes (sel)</button>
+        <button onclick="openHistorialSelected()" title="Ver historial ergonómico de los seleccionados" style="background:#027bc5;"><i class="fa-solid fa-book-medical"></i>Ver historial (sel)</button>
+    </div>
+    <div class="control-group"> 
+         <button onclick="openDbEditor()" class="db-editor-btn"><i class="fa-solid fa-database"></i>Editar Base de Datos</button>
+         <button onclick="togglePresentationMode()" class="presentation-btn"><i class="fa-solid fa-eye"></i></button>
+          <button onclick="openLineManager()" class="db-editor-btn">
+  <i class="fa-solid fa-sitemap"></i> Gestor de Líneas
+</button>
+    </div>
+</div>
+
+<div class="page-wrapper">
+    <div class="main-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--secondary-color); margin-bottom: 10px;">
+            <h2 style="border-bottom: none; margin: 0;">Rotación Diaria</h2>
+            <div id="contador-personal" style="font-weight: bold;"></div>
+        </div>
+        <table id="rotacion">
+            <thead>
+                <tr><th>Estación</th><th>TM´s</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <div class="legend">
+            <div class="item"><span class="swatch alta"></span> <span><b>H</b> = High (Alta carga)</span></div>
+            <div class="item"><span class="swatch media"></span> <span><b>M</b> = Medium (Media carga)</span></div>
+            <div class="item"><span class="swatch baja"></span> <span><b>L</b> = Low (Baja carga)</span></div>
+            <div class="item"><span style="color: red; font-weight: bold; font-size: 16px;">⚠️</span> <span>= Riesgo Ergonómico</span></div>
+        </div>
+        <div style="margin-top:8px;" class="small-muted">Tip: Ctrl/Cmd+Click para seleccionar múltiples nombres; doble clic para ver historial.</div>
+    </div>
+
+    <div class="sidebar">
+        <div id="semana-tracker" style="display: flex; gap: 8px; text-align: center; border: 1px solid #ddd; padding: 8px; border-radius: 4px; margin-bottom: 20px; justify-content: space-around;">
+            <div><b>L</b><br><span id="pct-L" contenteditable="true"></span></div>
+            <div><b>M</b><br><span id="pct-M" contenteditable="true"></span></div>
+            <div><b>K</b><br><span id="pct-K" contenteditable="true"></span></div>
+            <div><b>J</b><br><span id="pct-J" contenteditable="true"></span></div>
+            <div><b>V</b><br><span id="pct-V" contenteditable="true"></span></div>
+        </div>
+
+        <h2 id="sobrantes-title">TM´s Sobrantes</h2>
+        <table id="sobrantes">
+            <thead><tr><th>Persona</th></tr></thead>
+            <tbody></tbody>
+        </table>
+
+        <div class="hide-in-presentation">
+            <h2 id="ausentes-title">TM´s Ausentes</h2>
+            <textarea id="ausentesInput" placeholder="Un nombre por línea..."></textarea>
+            <div class="helper">No importan mayúsculas/acentos.</div>
+        </div>
+
+        <h2 id="comentarios-title">Comentarios</h2>
+        <div id="comentarios" contenteditable="true" style="width: 100%; box-sizing: border-box; min-height: 80px; border: 1px solid #e8eef7; padding: 12px; border-radius: 6px; margin-bottom: 10px; font-size: 14px; line-height: 1.6;"></div>
+    </div>
+</div>
+
+<div class="footer">© 2026 RotApp AVCR - Abbott Vascular | Sistema de Gestión de Rotaciones | v2.0</div>
+
+<div id="report-modal" class="modal-overlay" onclick="closeReportModal(event)">
+  <div class="modal-content" id="report-modal-content">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+      <h3 style="margin:0; color:var(--primary-color);">Vista Previa - Reporte Semanal</h3>
+      <div>
+        <button onclick="downloadCurrentReport()" style="background:#008f39;"><i class="fa-solid fa-download"></i> Descargar</button>
+        <button onclick="closeReportModal(null)" style="background:#6c757d;">Cerrar</button>
+      </div>
+    </div>
+    <div id="report-modal-image-container" style="background:#fff; padding:8px; border:1px solid #eee; border-radius:6px;"></div>
+    <div class="small-muted">La imagen muestra los porcentajes, conteos y notas 'Yo...'.
+</div>            <!-- cierra .small-muted -->
+</div>            <!-- cierra #report-modal-content -->
+</div>            <!-- cierra #report-modal -->
+
+<!-- ========== MODAL: GESTOR DE LÍNEAS ========== -->
+
+<!-- ========== MODAL: GESTOR DE LÍNEAS ========== -->
+<div id="line-manager-modal" class="modal-overlay">
+  <div class="modal-content">
+    <h2>Gestor de Líneas</h2>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+      <div>
+        <h3>Crear / Duplicar línea</h3>
+        <label><b>Familia:</b></label>
+        <select id="lm-familia" style="width:100%; padding:8px; margin-bottom:8px;"></select>
+
+        <label><b>Duplicar estaciones de:</b></label>
+        <select id="lm-origen" style="width:100%; padding:8px; margin-bottom:8px;"></select>
+
+        <label><b>Nombre de nueva línea (ej. 2.2):</b></label>
+        <input id="lm-nuevo-nombre" placeholder="2.2" style="width:100%; padding:8px; margin-bottom:8px;">
+
+        <label style="display:flex;align-items:center;gap:8px;margin:6px 0;">
+          <input type="checkbox" id="lm-copiar-personas"> Copiar también las personas de la línea origen
+        </label>
+
+        <button onclick="lmCreateLine()" class="db-editor-btn">
+          <i class="fa-solid fa-plus"></i> Crear línea
+        </button>
+      </div>
+
+      <div>
+        <h3>Líneas existentes</h3>
+        <label><b>Familia:</b></label>
+        <select id="lm-familia-list" style="width:100%; padding:8px; margin-bottom:8px;"></select>
+
+        <ul id="lm-line-list" style="list-style:none; padding:0; max-height:300px; overflow:auto; border:1px solid #eee; border-radius:6px;"></ul>
+
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button onclick="lmDeleteSelected()" style="background:#dc3545;">
+            <i class="fa-solid fa-trash"></i> Eliminar
+          </button>
+          <button onclick="lmOpenDbEditor()" class="db-editor-btn">
+            <i class="fa-solid fa-database"></i> Editar personas
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <hr>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="closeLineManager()" style="background:#6c757d;">Cerrar</button>
+    </div>
+  </div>
+</div>
+<!-- ========== MODAL: HISTORIAL DE PERSONA ========== -->
+<div id="historial-modal" class="modal-overlay" style="display:none;" onclick="if (event.target && event.target.id === 'historial-modal') closeHistorialModal()">
+    <div class="modal-content" id="historial-modal-content" style="max-width:900px;">
+        <h2 id="historial-nombre" style="margin-top:0;"></h2>
+
+        <div id="historial-lista" style="margin-bottom:15px; line-height:1.6;"></div>
+
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:8px;">
+            <button onclick="closeHistorialModal()" style="background:#6c757d; margin-top:10px;">
+      Cerrar
+    </button>
+        </div>
+  </div>
+</div>
+
+
+<script>
+/* ========== BASE DE DATOS ========== */
+let database = {};
+const initialDatabase = { "OTW": {
+    "1.4": {
+        personas: {
+            "Keylin": ["IM Necking"],
+            "Elizabeth": ["IM Necking"],
+
+            "Sharon": ["Marcadores"],
+            "Kevin": ["Marcadores"],
+            "Karina": ["Laser de Marcadores"],
+
+            "Valeria": ["Corte OM"],
+            "Celia": ["Tubbing"],
+
+            "Kervin": ["Proximal", "Distal Laser"],
+            
+            "Suchayle": ["L. Midlap"],
+            "Johan": ["L. Midlap"],
+
+            "Leslie": ["Plasma", "Leak Test"],
+            "Older": ["Plasma", "IMC"],
+
+            "Melania": ["Engomado"],
+            "Carlos": ["Engomado"],
+
+            "Jaqueline": ["Sidearm"],
+            "Gian Marco": ["Sidearm"],
+
+            "Brayner": ["Leak Test", "Empaque"],
+            
+            "Juan": ["Hidrofilico"],
+
+            "Jose P.": ["Fold", "Hidrofilico"],
+            "Stephanie": ["Press"],
+            "Julian": ["Press", "Empaque"],
+
+            "Jonnathan": ["IMC", "Sidearm", "FG"],
+            
+            "Sebastián": ["FG", "Coil", "Pouch"],
+            "Kembly": ["Coil"],
+            "Rebeca": ["Pouch"],
+
+            "Katherine": ["Proximal"],
+            "Monserrat": ["Distal Prep"],
+            "Ana": []
+        },
+
+        estaciones: {
+            "IM Necking": 2,
+            "Marcadores": 2,
+            "Laser de Marcadores": 1,
+            "Corte OM": 1,
+            "Tubbing": 1,
+            "Corte de Balloon": 1,
+            "Proximal": 1,
+            "L. Midlap": 2,
+            "Distal Prep": 2,
+            "Distal Laser": 2,
+            "Plasma": 2,
+            "Engomado": 2,
+            "Sidearm": 1,
+            "Leak Test": 1,
+            "Hidrofilico": 1,
+            "Fold": 2,
+            "Press": 1,
+            "IMC": 1,
+            "FG": 1,
+            "Coil": 1,
+            "Pouch": 1,
+            "Empaque": 1
+        },
+
+        ordenEstaciones: [
+            "IM Necking",
+            "Marcadores",
+            "Laser de Marcadores",
+            "Corte OM",
+            "Tubbing",
+            "Corte de Balloon",
+            "Proximal",
+            "L. Midlap",
+            "Distal Prep",
+            "Distal Laser",
+            "Plasma",
+            "Engomado",
+            "Sidearm",
+            "Leak Test",
+            "Hidrofilico",
+            "Fold",
+            "Press",
+            "IMC",
+            "FG",
+            "Coil",
+            "Pouch",
+            "Empaque"]}},
+"NC Trek NEO": {
+  "1.4": {
+    personas: {
+      "Ana":["Marcadores de IM","Fundas"],
+      "Bayron":["Plasma"],
+      "Brayner":["Hipotubo","Notch","Leak Test","Empaque"],
+      "Carlos":["Distal Laser","Hidro"],
+      "Celia":["IM Necking","Marcadores de IM","Notch","Hipotubo"],
+      "Elizabeth":["IM Necking","Marcadores de IM","Laser de Marcadores"],
+      "Gian Marco":["Notch","Hipotubo","Sidearm"],
+      "Jaqueline":["Sidearm","Hipotubo"],
+      "Johan":["OM","Proximal"],
+      "Jonnathan":["Distal Prep","Coil","Sidearm"],
+      "Jose P.":["OM","Plasma","Hidro","Fold"],
+      "Juan":["Notch","Plasma","Hidro"],
+      "Julian":["Fold","Press","Pouch","Empaque","Coil"],
+      "Karina":["Laser de Marcadores", "Distal Prep"],
+      "Kevin":["Marcadores de IM","Proximal","Fold"],
+      "Kervin":["OM","Distal Prep","Distal Laser"],
+      "Keylin":["IM Necking","Marcadores de IM","Laser de Marcadores"],
+      "Leslie":["Leak Test","Plasma","Fold"],
+      "Melania":["OM","Plasma","Hidro"],
+      "Older":["Notch","Plasma","Hidro","Fundas","Empaque"],
+      "Rebeca":["Marcadores de IM","Distal Prep","Pouch"],
+      "Sebastian":["Corte de Balloon","Press","Coil","Pouch"],
+      "Sharon":["IM Necking","Marcadores de IM","Laser de Marcadores"],
+      "Stephanie":["Leak Test","Press","Fundas"],
+      "Suchayle":["OM","Distal Laser","Notch","Hipotubo"],
+      "Valeria":["IM Necking","Marcadores de IM","Hipotubo","Sidearm"],
+
+      /* NUEVOS */
+      "Katherine": ["Distal Prep", "Proximal", "Corte de Balloon"],
+      "Monserrat": ["Corte de Balloon", "Proximal", "Distal Prep", "Leak Test"]
+    },
+
+    estaciones: {
+      "IM Necking":2,
+      "Marcadores de IM":2,
+      "Laser de Marcadores":2,
+      "OM":2,
+      "Corte de Balloon":1,
+      "Proximal":1,
+      "Distal Prep":2,
+      "Distal Laser":2,
+      "Notch":3,
+      "Hipotubo":2,
+      "Sidearm":1,
+      "Leak Test":1,
+      "Plasma":1,
+      "Hidro":1,
+      "Fold":2,
+      "Fundas":1,
+      "Press":1,
+      "Coil":1,
+      "Pouch":1,
+      "Empaque":1
+    },
+
+    ordenEstaciones: [
+      "IM Necking",
+      "Marcadores de IM",
+      "Laser de Marcadores",
+      "OM",
+      "Corte de Balloon",
+      "Proximal",
+      "Distal Prep",
+      "Distal Laser",
+      "Notch",
+      "Hipotubo",
+      "Sidearm",
+      "Leak Test",
+      "Plasma",
+      "Hidro",
+      "Fold",
+      "Fundas",
+      "Press",
+      "Coil",
+      "Pouch",
+      "Empaque"
+    ]
+  }
+}, "NC Trek": { "1.5": { personas: { "Maritza": ["Bayoneta", "IM Necking", "Marcadores", "Distal P", "Hipotubo"], "Kimberly": ["Bayoneta", "Sidearm"], "Ligia": ["Bayoneta", "IM Necking", "Marcadores", "Laser de M."], "Rosita": ["IM Necking", "Corte", "Distal P"], "Daniela": ["IM Necking", "Punta", "Fold"], "Jurgen": ["IM Necking"], "Noe": ["IM Necking"], "Yaine": ["Marcadores", "Laser de M.", "Pouch"], "Nicole": ["Marcadores", "Distal P", "Fold"], "Kevin": ["Marcadores", "Punta", "Sidearm"], "Ruben": ["Laser de M.", "Notch", "Fold"], "Susana": ["Laser de M.", "Hipotubo"], "Adrian": ["Laser de M.", "Plasma", "Hidro"], "Jeremy": ["OM Necking", "Midlap", "Pouch", "Empaque"], "Alejandra": ["OM Necking"], "Jose Ovidio": ["OM Necking"], "Yendry": ["OM Necking", "Notch", "Press"], "Kimberly C": ["Midlap", "Proximal", "Hipotubo"], "Miguel": ["Midlap", "Proximal", "Distal P", "Punta", "Plasma", "Hidro"], "Yency": ["Midlap", "Fold"], "Yahaira": ["Midlap", "Press", "Coil", "Pouch"], "Naomy": ["Corte", "Distal L.", "Fold"], "Iris": ["Corte", "Distal P", "Coil"], "Kendall": ["Proximal", "Distal L.", "Plasma", "Hidro", "Fold"], "Andres": ["Proximal", "Distal L.", "LKS"], "Maicol": ["Distal L.", "LKS", "Plasma", "Hidro"], "Fabiola": ["Distal L.", "Notch", "Coil"], "Fernanda": ["Distal L.", "Fundas"], "Sailyn": ["Punta", "Sidearm", "Plasma"], "Andrea": ["Notch", "Hipotubo", "LKS"], "Cinthya": ["Notch", "Press", "Fundas"], "Ana": ["Notch"], "Jose": ["Plasma", "Hidro", "Coil", "Empaque"], "Annie": ["Press", "Empaque", "Fundas"] }, estaciones: { "Notch": 3, "IM Necking": 2, "Marcadores": 2, "Laser de M.": 2, "OM Necking": 2, "Midlap": 2, "Distal Prep": 2, "Distal L.": 2, "Hipotubo": 2, "Distal P": 2, "Fold": 2, "Proximal": 1, "Bayoneta": 1, "Corte": 1, "Punta": 1, "Sidearm": 1, "LKS": 1, "Plasma": 1, "Hidro": 1, "Press": 1, "Coil": 1, "Pouch": 1, "Empaque": 1, "Fundas": 1 }, ordenEstaciones: [ "Bayoneta", "IM Necking", "Marcadores", "Laser de M.", "OM Necking", "Midlap", "Corte", "Proximal", "Distal P", "Distal L.", "Punta", "Notch", "Hipotubo", "Sidearm", "LKS", "Plasma", "Hidro", "Fold", "Press", "Coil", "Pouch", "Empaque", "Fundas" ] } } };
+function loadDatabase() { const savedDb = localStorage.getItem('rotationDatabase'); if (savedDb) { try { database = JSON.parse(savedDb); } catch (e) { console.error("Error al cargar la base de datos guardada, usando la inicial.", e); database = initialDatabase; } } else { database = initialDatabase; localStorage.setItem('rotationDatabase', JSON.stringify(database)); } }
+const ergoMap = { 
+    // Estaciones de OTW
+    "Corte OM": ["M2"],
+    "Tubbing": ["L2"],
+    "L. Midlap": ["M4"],
+    "Engomado": ["L2"],
+    "Hidrofilico": ["L2"],
+    "IMC": ["L2"],
+    "FG": ["L2"],
+    "IM Necking": ["L1"], 
+    "Marcadores": ["H5"], 
+    "Laser de Marcadores": ["M4"], 
+    "Corte de Balloon": ["H5"], 
+    "Proximal": ["L4"], 
+    "Distal Prep": ["L4","M4"], 
+    "Distal Laser": ["L3"], 
+    "Leak Test": ["L2"], 
+    "Plasma": ["H2"], 
+    "Sidearm": ["L2"], 
+    "Fold": ["M1"], 
+    "Press": ["L2"], 
+    "Coil": ["M2"], 
+    "Pouch": ["L3"], 
+    "Empaque": ["M4"],
+    // Estaciones de NC Trek NEO
+    "Marcadores de IM": ["H5"], 
+    "OM": ["L2"], 
+    "Hipotubo": ["M4"], 
+    "Notch": ["L5"], 
+    "Hidro": ["H2"], 
+    "Fundas": ["M1"], 
+    "Bayoneta": ["M4"], 
+    "Laser de M.": ["M4"], 
+    "OM Necking": ["L2"], 
+    "Midlap": ["L4"], 
+    "Corte": ["H5"], 
+    "Distal P": ["L4"], 
+    "Distal L.": ["L3"], 
+    "Punta": ["M5"], 
+    "LKS": ["L2"]
+};
+const letraToClase = { H: "alta", M: "media", L: "baja" }
+
+/* ========== VARIABLES DE ESTADO ========== */
+let activePersonas = {}, activeEstaciones = {}, nameIndex = {}, activeOrdenEstaciones = [];
+let ultimaRotacion = {}; // Lo que se ve en pantalla
+let ultimaRotacionPrev = null; // Usado para comparar en la vista de medio día
+let historialErgonomico = {};
+let esVistaMedioDia = false;
+
+/**
+ * @type {object} rotacionMatutinaGuardada
+ * Almacena el estado de la rotación matutina, incluyendo ediciones manuales.
+ * Es la fuente de verdad a la que "Volver a Rotación" restaura.
+ */
+let rotacionMatutinaGuardada = {};
+let lastReportDataUrl = null;
+
+
+/* ========== NORMALIZACIÓN Y UTILIDADES ========== */
+const NFD = /[\u0300-\u036f]/g;
+function norm(s){ return (s||"").toString().normalize("NFD").replace(NFD,"").toLowerCase().replace(/\s+/g," ").trim(); }
+function canonicalize(name){ return nameIndex[norm(name)]||null; }
+function obtenerAusentes(){ return (document.getElementById("ausentesInput").value.split(/\r?\n/) || []).map(canonicalize).filter(Boolean); }
+
+/* ========== GESTIÓN DE ESTADO (LOCALSTORAGE) ========== */
+function getStorageKey(base) { const [familia, linea] = document.getElementById('context-selector').value.split('_'); return `${familia}-${linea}-${base}`; }
+function guardarRotacion(rot, key){ localStorage.setItem(key, JSON.stringify(rot)); }
+function cargarRotacion(key){ try { return JSON.parse(localStorage.getItem(key)); } catch(e) { return null; } }
+function guardarHistorial(hist){ localStorage.setItem(getStorageKey('history'), JSON.stringify(hist)); }
+function cargarHistorial(){ try { return JSON.parse(localStorage.getItem(getStorageKey('history'))); } catch(e) { return null; } }
+
+/* ========== ALGORITMO DE ROTACIÓN ========== */
+function esCargaAlta(est) { return (ergoMap[est] || []).some(tag => tag.startsWith('H')); }
+function candidatosPara(est, ausentesSet, asignadosSet){ return Object.keys(activePersonas).filter(p => activePersonas[p].includes(est) && !ausentesSet.has(p) && !asignadosSet.has(p)); }
+function rellenarEstacionesVacias(rotacion) { const ausentes = new Set(obtenerAusentes()); const usadas = new Set(Object.values(rotacion).flat().filter(Boolean)); let sobrantes = Object.keys(activePersonas).filter(p => !usadas.has(p) && !ausentes.has(p)); for (const est of activeOrdenEstaciones) { const capacidad = activeEstaciones[est] || 0; const asignados = rotacion[est] ? [...rotacion[est]] : []; while (asignados.length < capacidad) { const candIndex = sobrantes.findIndex(p => activePersonas[p].includes(est)); if (candIndex === -1) break; const [p] = sobrantes.splice(candIndex,1); asignados.push(p); } rotacion[est] = asignados; } return rotacion; }
+function intentarConstruirRotacion(estacionesOrdenadas, ausentesSet) { const rot = {}; const asignados = new Set(); for (const est of Object.keys(activeEstaciones)) rot[est] = []; for (const est of estacionesOrdenadas) { const needed = activeEstaciones[est] || 0; let cand = candidatosPara(est, ausentesSet, asignados); if (esCargaAlta(est)) { cand = cand.filter(p => { const h = historialErgonomico[p] || []; return !(h.length >= 2 && esCargaAlta(h[0]) && esCargaAlta(h[1])); }); } cand.sort((a,b) => (activePersonas[a].length - activePersonas[b].length)); if (cand.length === 0) continue; const seleccion = cand.slice(0, Math.min(needed, cand.length)); rot[est] = [...seleccion]; seleccion.forEach(p => asignados.add(p)); } return rot; }
+function evaluarRotacion(rotacion) { const estacionesLlenas = Object.keys(rotacion).filter(e => (rotacion[e]||[]).length >= (activeEstaciones[e]||0)).length; const usadas = new Set(Object.values(rotacion).flat().filter(Boolean).map(p=>p.replace(/ \(T\)$/,''))); const sobrantes = Object.keys(activePersonas).filter(p => !usadas.has(p) && !new Set(obtenerAusentes()).has(p)).length; const assignedAll = Object.values(rotacion).flat().map(p=>p.replace(/ \(T\)$/,'')); const duplicates = assignedAll.length - new Set(assignedAll).size; return estacionesLlenas * 100 - sobrantes * 10 - duplicates * 50; }
+function generarRotacionOptimizada(intentos = 60) { const ausentesSet = new Set(obtenerAusentes()); let mejor = null; let mejorScore = -Infinity; const baseOrden = [...activeOrdenEstaciones].sort((a,b) => (candidatosPara(a, ausentesSet, new Set()).length - candidatosPara(b, ausentesSet, new Set()).length) || ((esCargaAlta(b)?1:0) - (esCargaAlta(a)?1:0))); for (let i=0;i<intentos;i++) { const estacionesOrdenadas = [...baseOrden]; if (i % 3 === 0) estacionesOrdenadas.reverse(); if (i % 5 === 0) estacionesOrdenadas.sort(() => Math.random() - 0.5); const rot = intentarConstruirRotacion(estacionesOrdenadas, ausentesSet); const rotRellenada = rellenarEstacionesVacias(JSON.parse(JSON.stringify(rot))); const score = evaluarRotacion(rotRellenada); if (score > mejorScore) { mejorScore = score; mejor = rotRellenada; } } return { rotacion: mejor || rellenarEstacionesVacias(intentarConstruirRotacion(baseOrden, new Set())) }; }
+
+
+
+/* ========== CONTROLADORES DE BOTONES ========== */
+function actualizarHistorial(rotacionGenerada) { for (const est in rotacionGenerada) { for (const personaRaw of rotacionGenerada[est]) { const persona = personaRaw.replace(/ \(T\)$/,''); if (!historialErgonomico[persona]) historialErgonomico[persona] = []; historialErgonomico[persona].unshift(est); historialErgonomico[persona] = historialErgonomico[persona].slice(0, 2); } } }
+
+function generarRotacion(){
+    esVistaMedioDia = false;
+    const { rotacion: nuevaRotacion } = generarRotacionOptimizada(60);
+    ultimaRotacion = nuevaRotacion;
+    // Esta es ahora la fuente de verdad para la rotación matutina.
+    rotacionMatutinaGuardada = JSON.parse(JSON.stringify(nuevaRotacion));
+    ultimaRotacionPrev = null;
+    actualizarHistorial(ultimaRotacion);
+    guardarRotacion(ultimaRotacion, getStorageKey("last"));
+    guardarHistorial(historialErgonomico);
+    actualizarTabla();
+}
+function generarAuditoria() {
+    let reporte = "=== AUDITORÍA DEL DÍA ===\n\n";
+
+    // Fecha
+    const fecha = new Date().toLocaleDateString();
+    reporte += `📅 Fecha: ${fecha}\n\n`;
+
+    // Rotación de la mañana (base)
+    if (rotacionMatutinaGuardada && Object.keys(rotacionMatutinaGuardada).length) {
+        reporte += "🔵 ROTACIÓN DE LA MAÑANA:\n";
+        for (const est in rotacionMatutinaGuardada) {
+            reporte += `- ${est}: ${rotacionMatutinaGuardada[est].join(", ")}\n`;
+        }
+        reporte += "\n";
+    }
+
+    // Rotación medio día (si existe)
+    if (esVistaMedioDia && ultimaRotacion && Object.keys(ultimaRotacion).length) {
+        reporte += "🟢 ROTACIÓN DEL MEDIO DÍA:\n";
+        for (const est in ultimaRotacion) {
+            reporte += `- ${est}: ${ultimaRotacion[est].join(", ")}\n`;
+        }
+        reporte += "\n";
+    }
+
+    // Ausentes
+    const ausentes = obtenerAusentes();
+    if (ausentes.length > 0) {
+        reporte += "🚫 AUSENTES:\n";
+        ausentes.forEach(a => reporte += `- ${a}\n`);
+        reporte += "\n";
+    }
+
+    // TM sobrantes (calcular a partir del estado actual)
+    const usadas = new Set(Object.values(ultimaRotacion || {}).flat().map(p => canonicalize(p.replace(/ \(T\)$/,''))).filter(Boolean));
+    const ausSet = new Set(obtenerAusentes());
+    const sobrantesList = Object.keys(activePersonas).filter(p => !usadas.has(p) && !ausSet.has(p));
+    if (sobrantesList.length > 0) {
+        reporte += "⚠️ TM SOBRANTES:\n";
+        sobrantesList.forEach(s => reporte += `- ${s}\n`);
+        reporte += "\n";
+    }
+
+    // Sobre-carga ergonómica
+    const ergonomia = detectarErgoCritica();
+    if (ergonomia.length > 0) {
+        reporte += "🔥 ERGONOMÍA CRÍTICA DETECTADA:\n";
+        ergonomia.forEach(e => reporte += `- ${e}\n`);
+        reporte += "\n";
+    }
+
+    // Estaciones con capacidad 0
+    const estaciones0 = Object.keys(activeEstaciones || {}).filter(e => (activeEstaciones[e] || 0) === 0);
+    if (estaciones0.length > 0) {
+        reporte += "⚠️ ESTACIONES CON CAPACIDAD 0:\n";
+        estaciones0.forEach(e => reporte += `- ${e}\n`);
+        reporte += "\n";
+    }
+
+    // Comentarios / campo 'Comentarios'
+    const campoYo = document.getElementById("comentarios")?.textContent.trim();
+    if (campoYo) {
+        reporte += "👤 COMENTARIO PERSONAL:\n";
+        reporte += `"${campoYo}"\n\n`;
+    }
+
+    // Exportación automática
+    descargarArchivo("Auditoria_" + fecha + ".txt", reporte);
+
+    alert("Auditoría generada correctamente.");
+}
+
+function obtenerSobrantes() {
+    const usadas = new Set(Object.values(ultimaRotacion || {}).flat().map(p => canonicalize(p.replace(/ \(T\)$/,''))).filter(Boolean));
+    const ausSet = new Set(obtenerAusentes());
+    return Object.keys(activePersonas).filter(p => !usadas.has(p) && !ausSet.has(p));
+}
+
+function detectarErgoCritica() {
+    const criticos = [];
+
+    for (const persona in historialErgonomico) {
+        const hist = historialErgonomico[persona];
+        if (hist && hist.length >= 3) {
+            const tagCodes = hist.map(est => {
+                const tags = ergoMap[est] || [];
+                return tags.length ? tags[0][0] : '-';
+            });
+            const ult3 = tagCodes.slice(-3);
+            if (ult3.every(c => c === "H")) {
+                criticos.push(`${persona} → 3 cargas H consecutivas`);
+            }
+        }
+    }
+
+    return criticos;
+}
+function openHistorialPersona(nombre) {
+    try { nombre = decodeURIComponent(nombre); } catch(e) {}
+    const limpio = nombre.replace(" (T)", "");
+    const hist = historialErgonomico[limpio] || [];
+    document.getElementById("historial-nombre").textContent = limpio;
+    // Construir la tarjeta única con las últimas estaciones y su carga
+    if (!hist || hist.length === 0) {
+        document.getElementById("historial-lista").innerHTML = `<div class="hist-person-card"><h4 style="margin:0;">${escapeHtml(limpio)}</h4><i>No tiene historial registrado.</i></div>`;
+    } else {
+        const rows = hist.map((est, i) => {
+            const carga = (ergoMap[est] || [])[0] ? (ergoMap[est] || [])[0][0] : '-';
+            return `<li>${escapeHtml(est)} <small style='color:#666; margin-left:6px;'>${carga}</small></li>`;
+        }).join('');
+        document.getElementById("historial-lista").innerHTML = `<div class="hist-person-grid"><div class="hist-person-card"><h4 style="margin:0;">${escapeHtml(limpio)}</h4><div style="margin-top:8px;"><b>Historial completo</b><ol style="padding-left:18px; margin:6px 0;">${rows}</ol></div></div></div>`;
+    }
+
+    document.getElementById("historial-modal").style.display = "block";
+}
+
+function closeHistorialModal() {
+    document.getElementById("historial-modal").style.display = "none";
+}
+
+function openHistorialSelected() {
+    const sel = window.selectedPersonsInTable || new Set();
+    if (!sel || sel.size === 0) { alert('No hay personas seleccionadas. Usa Ctrl/Cmd+Click para seleccionar.'); return; }
+    const names = [...sel];
+    document.getElementById('historial-nombre').textContent = `Historial (${names.length})`;
+    const container = document.getElementById('historial-lista');
+    const html = names.map(n => {
+        const person = n.replace(/ \(T\)$/,'');
+        const hist = historialErgonomico[person] || [];
+        const rows = (hist.length === 0) ? `<i>No tiene historial registrado.</i>` : `<ol style="padding-left:18px;margin:6px 0;">${hist.map((est,i)=>`<li>${escapeHtml(est)} <small style='color:#666; margin-left:6px;'>${(ergoMap[est]||[])[0] ? (ergoMap[est]||[])[0][0] : '-'}</small></li>`).join('')}</ol>`;
+        return `<div class="hist-person-card"><h4 style="margin:0;">${escapeHtml(person)}</h4><div style="margin-top:6px;"><b>Historial completo</b>${rows}</div></div>`;
+    }).join('');
+    container.innerHTML = `<div class="hist-person-grid">${html}</div>`;
+    document.getElementById('historial-modal').style.display = 'block';
+}
+
+
+function descargarArchivo(nombre, contenido) {
+    const blob = new Blob([contenido], { type: "text/plain" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = nombre;
+    link.click();
+}
+/**
+ * Restaura la rotación matutina guardada, incluyendo cualquier edición manual.
+ */
+function volverARotacion() {
+    if (!rotacionMatutinaGuardada || Object.keys(rotacionMatutinaGuardada).length === 0) {
+        alert("No hay una rotación base para restaurar. Genere una rotación primero.");
+        return;
+    }
+    // Restaura la vista a partir del estado guardado.
+    ultimaRotacion = JSON.parse(JSON.stringify(rotacionMatutinaGuardada));
+    esVistaMedioDia = false;
+    ultimaRotacionPrev = null;
+    guardarRotacion(ultimaRotacion, getStorageKey("last"));
+    actualizarTabla();
+    alert("Se ha vuelto a la rotación matutina.");
+}
+
+function generarMedioDia(){
+    if (Object.keys(rotacionMatutinaGuardada).length === 0) {
+        alert("Primero genera una rotación inicial con el botón 'Rotación'.");
+        return;
+    }
+    esVistaMedioDia = true;
+    ultimaRotacionPrev = JSON.parse(JSON.stringify(rotacionMatutinaGuardada));
+    let mejorRotacion = null;
+    let mejorPuntaje = -Infinity;
+    for (let i = 0; i < 30; i++) {
+        const { rotacion: intento } = generarRotacionOptimizada(20);
+        let personasRotadas = 0;
+        for (const est in intento) {
+            const list = (intento[est]||[]).map(x=>x.replace(/ \(T\)$/,''));
+            const prev = (ultimaRotacionPrev[est]||[]).map(x=>x.replace(/ \(T\)$/,''));
+            for (const p of list) if (!prev.includes(p)) personasRotadas++;
+        }
+        if (personasRotadas > mejorPuntaje) {
+            mejorPuntaje = personasRotadas;
+            mejorRotacion = intento;
+        }
+    }
+    ultimaRotacion = mejorRotacion || generarRotacionOptimizada(10).rotacion;
+    actualizarHistorial(ultimaRotacion);
+    guardarRotacion(ultimaRotacion, getStorageKey("last")); // Guarda el estado de medio día
+    guardarHistorial(historialErgonomico);
+    actualizarTabla();
+}
+
+/* ========== INTERFAZ DE USUARIO (UI) ========== */
+function togglePresentationMode() { document.body.classList.toggle('presentation-mode'); }
+function tagsForStation(est){ return (ergoMap[est]||[]).map(t => ({letra:t[0], clase:letraToClase[t[0]]||"otro"})); }
+function claseDominante(tags){ let b={s:0,c:"baja"}; for(const t of tags){const s=({H:3,M:2,L:1})[t.letra]||0; if(s>b.s) b={s,c:t.clase};} return b.c; }
+function bodyPart(n){ return ({1:"Cuello",2:"Hombros",3:"Codos",4:"Muñecas",5:"Manos"})[n]||""; }
+function loadName(l){ return ({H:"Alta", M:"Media", L:"Baja"})[l]||""; }
+function getErgoTooltipText(station) { const tags = ergoMap[station] || []; if (!tags.length) return ""; return `Carga Ergonómica: ${tags.map(t => `${loadName(t[0])} (${bodyPart(parseInt(t.slice(1),10))})`).join('; ')}`; }
+function getLoadLevel(station) {
+    const tags = ergoMap[station] || [];
+    if (!tags.length) return null;
+    return tags[0][0]; // H, M o L
+}
+
+
+
+function getChangeIcon(person, station, prevRotacion) {
+    const previousStation = Object.keys(prevRotacion).find(
+        est => prevRotacion[est]?.includes(person)
+    );
+
+    if (!previousStation) return ""; // No mostrar NEW
+
+    if (previousStation === station) return ""; // No icono si no cambió estación
+
+    const prevLoad = getLoadLevel(previousStation);
+    const currLoad = getLoadLevel(station);
+
+    if (!prevLoad || !currLoad) return "";
+
+    const order = { L: 1, M: 2, H: 3 };
+
+    // ÚNICO icono permitido: si sube carga ergonómica
+    if (order[currLoad] > order[prevLoad]) return "⚠️";
+
+    return ""; // Nada para todos los demás casos
+}
+
+function actualizarContadores() { const totalPersonal = Object.keys(activePersonas).length; const numAusentes = obtenerAusentes().length; const presentes = totalPersonal - numAusentes; const contadorDiv = document.getElementById('contador-personal'); let ausentesHtml = numAusentes > 0 ? ` <span style="color:red;">(-${numAusentes} Ausentes)</span>` : ''; let porcentajeHtml = ''; if (esVistaMedioDia && presentes > 0) { let numNoRotando = 0; if (ultimaRotacion && ultimaRotacionPrev) { for (const est in ultimaRotacion) { if (ultimaRotacion[est] && ultimaRotacionPrev[est]) { for (const p of ultimaRotacion[est]) { if (ultimaRotacionPrev[est].includes(p.replace(/ \(T\)$/,''))) numNoRotando++; } } } } const numSobrantes = document.querySelectorAll('#sobrantes tbody tr').length; const totalNoRotando = numNoRotando + numSobrantes; const numRotando = presentes - totalNoRotando; const porcentaje = presentes > 0 ? (numRotando / presentes) * 100 : 0; const color = porcentaje < 80 ? 'red' : 'green'; porcentajeHtml = ` <span style="margin-left: 15px; color: ${color};">(${porcentaje.toFixed(0)}%)</span>`; const diaSemana = new Date().getDay(); if(diaSemana >= 1 && diaSemana <= 5) { const dias = ['L', 'M', 'K', 'J', 'V']; const idDia = dias[diaSemana - 1]; const pctSpan = document.getElementById(`pct-${idDia}`); if(pctSpan) { pctSpan.textContent = `${porcentaje.toFixed(0)}%`; actualizarEstilosSemana(); guardarDatosSemana(); } } } if (contadorDiv) contadorDiv.innerHTML = `${presentes}/${totalPersonal} TM Presentes` + ausentesHtml + porcentajeHtml; }
+
+const getDuplicateAssignments = () => { const assignments = new Map(); const duplicates = new Set(); for (const station in ultimaRotacion) { for (const person of ultimaRotacion[station]) { const p = person.replace(/ \(T\)$/,''); if (assignments.has(p)) duplicates.add(p); else assignments.set(p, station); } } return duplicates; };
+
+// CONFIG: cambiar a false si NO quieres que los nombres que exceden capacidad se guarden
+const SAVE_OVERFLOW = true;
+
+/** Escapa texto para evitar romper el DOM si el usuario pega HTML */
+function escapeHtml(str) {
+    return String(str || "")
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+}
+
+/**
+ * Actualiza una celda editable en la tabla de rotación.
+ * - Parse: separadores -, , ; /
+ * - Permite nombres desconocidos con confirmación
+ * - Marca duplicados (ya asignados en otra estación) en rojo oscuro (no añadidos)
+ * - Marca overflow en naranja (se guardan solo si SAVE_OVERFLOW=true)
+ * - Si la celda queda vacía o no hay válidos, deja la estación sin asignar
+ * - Actualiza ultimaRotacion, sobrantes, contadores y storage
+ */
+function actualizarCeldaEditada(event) {
+    const td = event.target;
+    if (!td || !td.dataset || !td.dataset.station) return;
+
+    const est = td.dataset.station;
+    const capacidad = activeEstaciones[est] || 0;
+
+    // ------------------------------------------------------------------
+    // 1) Parsear texto manual del usuario
+    // ------------------------------------------------------------------
+    const raw = (td.textContent || "").trim();
+
+    const tokens = raw === "" 
+        ? [] 
+        : raw.split(/[-–—,;\/]+/).map(s => s.trim()).filter(Boolean);
+
+    // ------------------------------------------------------------------
+    // 2) Obtener todas las asignaciones excepto esta estación
+    // ------------------------------------------------------------------
+    const asignadosExcluyendoActual = new Set();
+
+    for (const e in ultimaRotacion) {
+        if (e === est) continue;
+
+        (ultimaRotacion[e] || []).forEach(p => {
+            const canon = canonicalize(p.replace(/ \(T\)$/, ""));
+            if (canon) asignadosExcluyendoActual.add(canon);
+        });
+    }
+
+    // ------------------------------------------------------------------
+    // 3) Preparar listas resultado
+    // ------------------------------------------------------------------
+    const renderedParts = [];  // HTML final para pintar la celda
+    const toSave = [];         // Nombres válidos que sí se guardan en ultimaRotacion
+    let validCount = 0;
+    let nombresNoEncontrados = [];
+
+    // ------------------------------------------------------------------
+    // 4) Procesar uno por uno los nombres ingresados
+    // ------------------------------------------------------------------
+    tokens.forEach(rawName => {
+        // Ignorar "sin asignar"
+        if (norm(rawName) === norm("sin asignar")) {
+            return;
+        }
+
+        const canon = canonicalize(rawName);
+
+        // ⚠️ Desconocido en base - PERMITIR CON CONFIRMACIÓN
+        if (!canon) {
+            // Guardar para mostrar confirmación después
+            nombresNoEncontrados.push(rawName);
+            renderedParts.push(
+                `<span style="color:orange;font-weight:bold;" title="No se encuentra en la base de datos">${escapeHtml(rawName)}</span>`
+            );
+            toSave.push(rawName);
+            validCount++;
+            return;
+        }
+
+        // ❌ Duplicado en otra estación
+        if (asignadosExcluyendoActual.has(canon)) {
+            renderedParts.push(
+                `<span style="color:darkred;font-weight:bold;">${escapeHtml(canon)}</span>`
+            );
+            return;
+        }
+
+        // Entrenamiento si no conoce la estación
+        const esEntrenamiento = !((activePersonas[canon] || []).includes(est));
+        const display = esEntrenamiento ? `${canon} (T)` : canon;
+
+        const fueraCapacidad = validCount >= capacidad;
+
+        // 🟧 Fuera de capacidad
+        if (fueraCapacidad) {
+            renderedParts.push(
+                `<span style="color:orange;font-weight:bold;">${escapeHtml(display)}</span>`
+            );
+            // NO GUARDAMOS overflow
+            return;
+        }
+
+        // ✔ Válido
+        renderedParts.push(escapeHtml(display));
+        toSave.push(display);
+        validCount++;
+    });
+
+    // ------------------------------------------------------------------
+    // 5) Mostrar confirmación para nombres no encontrados
+    // ------------------------------------------------------------------
+    if (nombresNoEncontrados.length > 0) {
+        const mensaje = nombresNoEncontrados.length === 1 
+            ? `"${nombresNoEncontrados[0]}" no se encuentra dentro de la línea, ¿quieres continuar?`
+            : `Los siguientes nombres no se encuentran dentro de la línea:\n${nombresNoEncontrados.map(n => `- ${n}`).join('\n')}\n\n¿Quieres continuar?`;
+        
+        if (!confirm(mensaje)) {
+            // Usuario canceló, restaurar el contenido anterior
+            event.preventDefault();
+            return;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 6) Si no hubo válidos, dejar estación sin asignar
+    // ------------------------------------------------------------------
+    if (toSave.length === 0) {
+        ultimaRotacion[est] = [];
+        td.parentElement.classList.add("unassigned");
+        td.innerHTML = "<span>(sin asignar)</span>";
+
+    } else {
+        ultimaRotacion[est] = toSave;
+        td.parentElement.classList.remove("unassigned");
+        td.innerHTML = renderedParts.join(" - ");
+    }
+
+    // ------------------------------------------------------------------
+    // 7) Si no es medio día, guardar como rotación matutina
+    // ------------------------------------------------------------------
+    if (!esVistaMedioDia) {
+        rotacionMatutinaGuardada = JSON.parse(JSON.stringify(ultimaRotacion));
+    }
+
+    // ------------------------------------------------------------------
+    // 8) Guardar, recalcular sobrantes y contadores
+    // ------------------------------------------------------------------
+    guardarRotacion(ultimaRotacion, getStorageKey("last"));
+    actualizarSobrantes();
+    actualizarContadores();
+}
+function actualizarTabla(){
+    const tbody=document.querySelector("#rotacion tbody");
+    tbody.innerHTML="";
+    if (!activeOrdenEstaciones) return;
+    const duplicates = getDuplicateAssignments();
+    for(const est of activeOrdenEstaciones) {
+        const pers = ultimaRotacion[est] || [];
+        const tr=document.createElement("tr");
+        const tags = tagsForStation(est);
+        const tdEst=document.createElement("td");
+        tdEst.textContent = est;
+        tdEst.className = "station-name";
+        if(tags.length){ tdEst.classList.add(claseDominante(tags)); tdEst.title = getErgoTooltipText(est); }
+        const tdPers=document.createElement("td");
+        tdPers.contentEditable="true";
+        tdPers.dataset.station = est;
+        if (pers.length === 0) { tdPers.innerHTML = `<span>(sin asignar)</span>`; tr.classList.add("unassigned"); }
+        else { 
+            const capacity = activeEstaciones[est] || 0; 
+            tdPers.innerHTML = pers.map((p, index) => {
+                const pCanon = p.replace(/ \(T\)$/,'');
+                const duplicate = duplicates.has(pCanon);
+                const encoded = encodeURIComponent(p).replace(/'/g, "\\'");
+
+                // Icono de cambio (solo si existe rotación previa)
+                let icon = "";
+                if (ultimaRotacionPrev && esVistaMedioDia) {
+                    icon = getChangeIcon(pCanon, est, ultimaRotacionPrev);
+                }
+
+                // Colores actuales + icono agregado
+                if (esVistaMedioDia && ultimaRotacionPrev && ultimaRotacionPrev[est]?.includes(pCanon))
+                    return `<span ondblclick="openHistorialPersona('${encoded}')" title="Doble clic: ver historial" style="color:red;font-weight:bold;">${p} ${icon}</span>`;
+
+                if (duplicate)
+                    return `<span ondblclick="openHistorialPersona('${encoded}')" title="Doble clic: ver historial" style="color:darkred;font-weight:bold;">${p} ${icon}</span>`;
+
+                if (index >= capacity)
+                    return `<span ondblclick="openHistorialPersona('${encoded}')" title="Doble clic: ver historial" style="color:orange;font-weight:bold;">${p} ${icon}</span>`;
+
+                return `<span ondblclick="openHistorialPersona('${encoded}')" title="Doble clic: ver historial">${p} ${icon}</span>`;
+            }).join(' - ');
+        }
+        tr.appendChild(tdEst);
+        tr.appendChild(tdPers);
+        tbody.appendChild(tr);
+    }
+    actualizarSobrantes();
+    actualizarContadores();
+}
+function actualizarSobrantes() {
+
+    // 1) Todas las personas de la base
+    const todas = Object.keys(activePersonas);
+
+    // 2) Personas asignadas actualmente
+    const asignadas = new Set();
+
+    for (const est in ultimaRotacion) {
+        (ultimaRotacion[est] || []).forEach(p => {
+            const canon = canonicalize(p.replace(/ \(T\)$/, ""));
+            if (canon) asignadas.add(canon);
+        });
+    }
+
+    // 3) Sobrantes = todos - asignados (y no ausentes)
+    const ausentesSet = new Set(obtenerAusentes());
+    const sobrantes = todas.filter(p => !asignadas.has(p) && !ausentesSet.has(p));
+
+    // 4) Pintarlos en la tabla #sobrantes (tbody)
+    const tbody = document.querySelector('#sobrantes tbody');
+    if (!tbody) return;
+    if (sobrantes.length === 0) {
+        tbody.innerHTML = `<tr><td style="color:#999">Sin personas sobrantes</td></tr>`;
+    } else {
+        tbody.innerHTML = sobrantes.map(p => {
+            const escaped = escapeHtml(p);
+            const encoded = encodeURIComponent(p).replace(/'/g, "\\'");
+            return `
+                <tr>
+                  <td style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                    <span style="flex:1" onclick="openHistorialPersona('${encoded}')">${escaped}</span>
+                    <span style="display:inline-flex; gap:6px;">
+                      <button onclick="promoverSobrante('${encoded}')" title="Promover a primera estación con cupo" style="background:#008f39;padding:6px;border-radius:4px;color:#fff;border:none;">Promover</button>
+                      <button onclick="marcarAusenteDesdeSobrante('${encoded}')" title="Marcar como ausente" style="background:#6c757d;padding:6px;border-radius:4px;color:#fff;border:none;">Ausente</button>
+                      <button onclick="eliminarPersonaPorNombre('${encoded}')" title="Eliminar persona de la base" style="background:#dc3545;padding:6px;border-radius:4px;color:#fff;border:none;">Eliminar</button>
+                    </span>
+                  </td>
+                </tr>`;
+        }).join('');
+    }
+
+    window.sobrantesActuales = sobrantes;
+}
+
+function promoverSobrante(name) {
+    try { name = decodeURIComponent(name); } catch(e) {}
+    const canon = canonicalize(name);
+    if (!canon) { alert('Persona no encontrada: ' + name); return; }
+    // Sólo promover a estaciones donde la persona esté entrenada
+    const skills = activePersonas[canon] || [];
+    if (skills.length === 0) { alert('Esta persona no tiene estaciones asignadas/entrenadas.'); return; }
+
+    // Buscar estaciones entrenadas con cupo, respetando el orden general
+    const candidatos = activeOrdenEstaciones.filter(est => skills.includes(est));
+    for (const est of candidatos) {
+        const cap = activeEstaciones[est] || 0;
+        const asignados = (ultimaRotacion[est] || []).length;
+        if (asignados < cap) {
+            ultimaRotacion[est] = ultimaRotacion[est] || [];
+            ultimaRotacion[est].push(canon);
+            if (!esVistaMedioDia) rotacionMatutinaGuardada = JSON.parse(JSON.stringify(ultimaRotacion));
+            guardarRotacion(ultimaRotacion, getStorageKey('last'));
+            actualizarTabla();
+            return;
+        }
+    }
+
+    // Si no hay cupo en estaciones entrenadas, permitir overflow sólo si está permitido
+    if (SAVE_OVERFLOW) {
+        const est = candidatos[0];
+        if (est) {
+            ultimaRotacion[est] = ultimaRotacion[est] || [];
+            ultimaRotacion[est].push(canon);
+            if (!esVistaMedioDia) rotacionMatutinaGuardada = JSON.parse(JSON.stringify(ultimaRotacion));
+            guardarRotacion(ultimaRotacion, getStorageKey('last'));
+            actualizarTabla();
+            return;
+        }
+    }
+
+    alert('No hay estaciones con cupo donde esta persona esté entrenada.');
+}
+
+function marcarAusenteDesdeSobrante(name) {
+    try { name = decodeURIComponent(name); } catch(e) {}
+    const text = document.getElementById('ausentesInput');
+    if (!text) return;
+    const lines = (text.value || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (!lines.includes(name)) lines.push(name);
+    text.value = lines.join('\n');
+    actualizarSobrantes(); actualizarContadores();
+}
+
+function eliminarPersonaPorNombre(name) {
+    try { name = decodeURIComponent(name); } catch(e) {}
+    if (!confirm('Eliminar a "' + name + '" de la base de datos? Esta acción es irreversible.')) return;
+    const ctx = getCurrentContext();
+    if (!ctx || !ctx.data) { alert('No se pudo obtener contexto actual.'); return; }
+    if (ctx.data.personas[name]) {
+        delete ctx.data.personas[name];
+        localStorage.setItem('rotationDatabase', JSON.stringify(database));
+        switchContext();
+        alert('Persona eliminada: ' + name);
+    } else {
+        alert('No se encontró la persona en la base actual.');
+    }
+}
+
+async function descargarImagen() {
+    // Ocultar comentarios en la imagen
+    const comentariosTitle = document.getElementById("comentarios-title");
+    const comentarios = document.getElementById("comentarios");
+    const comentariosTitleOldDisplay = comentariosTitle ? comentariosTitle.style.display : "";
+    const comentariosOldDisplay = comentarios ? comentarios.style.display : "";
+    
+    if (comentariosTitle) comentariosTitle.style.display = "none";
+    if (comentarios) comentarios.style.display = "none";
+
+    // Activar modo presentación
+    document.body.classList.add('presentation-mode');
+    await new Promise(r => setTimeout(r, 100));
+
+    // Capturar imagen en formato A4 vertical sin cortes
+    const mainContainer = document.querySelector('.page-wrapper');
+    const canvas = await html2canvas(mainContainer, { 
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#f5f7fa',
+        logging: false
+    });
+
+    // Crear imagen en nueva ventana para impresión
+    const imgUrl = canvas.toDataURL("image/png");
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <style>
+                body { margin: 0; padding: 20px; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; background: #f0f0f0; }
+                img { max-width: 100%; height: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+                @media print { body { background: white; padding: 0; } img { max-width: 100%; box-shadow: none; } }
+            </style>
+        </head>
+        <body>
+            <img src="${imgUrl}" style="max-width: 100%; height: auto;">
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+
+    // Restaurar visibilidad
+    if (comentariosTitle) comentariosTitle.style.display = comentariosTitleOldDisplay;
+    if (comentarios) comentarios.style.display = comentariosOldDisplay;
+
+    document.body.classList.remove('presentation-mode');
+}
+
+
+const dias = ['L', 'M', 'K', 'J', 'V'];
+function actualizarEstilosSemana() {
+    dias.forEach(dia => {
+        const span = document.getElementById(`pct-${dia}`);
+        if(!span) return;
+        const valor = parseInt(span.textContent.replace('%',''),10);
+        span.style.color = !isNaN(valor) && valor < 80 ? 'red' : 'green';
+    });
+}
+function guardarDatosSemana() {
+    const datos = {};
+    dias.forEach(dia => {
+        datos[dia] = document.getElementById(`pct-${dia}`).textContent;
+    });
+    localStorage.setItem(getStorageKey('semanaPct'), JSON.stringify(datos));
+}
+function cargarDatosSemana() {
+    const datos = JSON.parse(localStorage.getItem(getStorageKey('semanaPct')) || '{}');
+    dias.forEach(dia => {
+        document.getElementById(`pct-${dia}`).textContent = datos[dia] || '0%';
+    });
+    actualizarEstilosSemana();
+}
+
+/* ========== MODOS Y BASE DE DATOS ========== */
+
+// --- FUNCIONES PARA REPORTE SEMANAL ---
+function getPresentesYNoRotantes(){
+    const totalPersonal = Object.keys(activePersonas).length;
+    const ausentes = new Set(obtenerAusentes());
+    const presentes = totalPersonal - ausentes.size;
+    const usadas = new Set(Object.values(ultimaRotacion||{}).flat().map(p => canonicalize(p.replace(/ \(T\)$/,''))).filter(Boolean));
+    const noRotantes = Object.keys(activePersonas).filter(p => !usadas.has(p) && !ausentes.has(p)).length;
+    return { presentes, noRotantes };
+}
+function formatDate(d){ return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`; }
+function weekRangeDates(){
+    const t=new Date(),d=t.getDay(),m=new Date(t);
+    m.setDate(t.getDate()-((d+6)%7));
+    const f=new Date(m); f.setDate(m.getDate()+4);
+    return {m,f};
+}
+
+async function generarReporteSemanal(){
+    const pct={}; dias.forEach(d=>{const e=document.getElementById(`pct-${d}`); pct[d]=(e?e.textContent.trim():'0%');});
+    const {presentes,noRotantes}=getPresentesYNoRotantes(); const{m,f}=weekRangeDates();
+    const yo={
+        mejoro:document.getElementById('yo-mejoro').textContent.trim(),
+        reconozco:document.getElementById('yo-reconozco').textContent.trim(),
+        anticipo:document.getElementById('yo-anticipo').textContent.trim(),
+        cumplo:document.getElementById('yo-cumplo').textContent.trim(),
+        respeto:document.getElementById('yo-respeto').textContent.trim()
+    };
+    const reportDiv=document.createElement('div');
+    reportDiv.style.cssText="width:1000px; padding:24px; background:white; font-family:Open Sans,sans-serif; color:#222; position:fixed; left:-20000px;";
+    const makeYoRow=(l,t,c)=>`<div style="display:flex;gap:8px;align-items:flex-start;"><div style="min-width:130px;font-weight:700">${l}</div><div style="flex:1;padding:8px;border-radius:6px;background:${c};min-height:34px">${t||'-'}</div></div>`;
+    reportDiv.innerHTML=
+        `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <div style="font-size:20px;font-weight:800;color:var(--primary-color)">Reporte Semanal - Rotación</div>
+            <div style="font-size:14px;color:#555">Semana: ${formatDate(m)} - ${formatDate(f)}</div>
+        </div>
+        <div style="display:flex;gap:12px;margin-bottom:12px;">
+            <div style="font-weight:700">TM Presentes: ${presentes}</div>
+            <div style="font-weight:700">No rotantes: ${noRotantes}</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;">
+            <thead><tr><th style="text-align:left;padding:8px;border-bottom:1px solid #eee">Día</th><th style="text-align:left;padding:8px;border-bottom:1px solid #eee">Porcentaje</th></tr></thead>
+            <tbody>${Object.entries(pct).map(([d,v])=>`<tr><td style="padding:8px;border-bottom:1px solid #f2f2f2;font-weight:700">${d}</td><td style="padding:8px;border-bottom:1px solid #f2f2f2;color:${(parseInt(v,10)>=80?'green':'red')};font-weight:800">${v}</td></tr>`).join('')}</tbody>
+        </table>
+        <div style="margin-top:14px;font-weight:800">Acciones/Observaciones (Yo...)</div>
+        <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:8px;">
+            ${makeYoRow('Yo Mejoro',yo.mejoro,'var(--yo-mejoro)')}
+            ${makeYoRow('Yo Reconozco',yo.reconozco,'var(--yo-reconozco)')}
+            ${makeYoRow('Yo Anticipo',yo.anticipo,'var(--yo-anticipo)')}
+            ${makeYoRow('Yo Cumplo',yo.cumplo,'var(--yo-cumplo)')}
+            ${makeYoRow('Yo Respeto',yo.respeto,'var(--yo-respeto)')}
+        </div>`;
+    document.body.appendChild(reportDiv);
+    try {
+        const canvas=await html2canvas(reportDiv,{
+            scale:2,
+            useCORS:true,
+            backgroundColor: '#fafbfc'
+        });
+        lastReportDataUrl=canvas.toDataURL('image/png');
+        showReportModal(lastReportDataUrl);
+    } catch(err){
+        alert('Error al generar reporte: '+(err.message||err));
+    } finally {
+        reportDiv.remove();
+    }
+}
+function showReportModal(dataUrl){
+    document.getElementById('report-modal-image-container').innerHTML=`<img src="${dataUrl}" alt="Reporte Semanal">`;
+    document.getElementById('report-modal').style.display='block';
+}
+function closeReportModal(evt){
+    if(!evt || evt.target.id==='report-modal') document.getElementById('report-modal').style.display='none';
+}
+function downloadCurrentReport(){
+    if(!lastReportDataUrl)return;
+    const a=document.createElement('a');
+    const {m,f}=weekRangeDates();
+    a.href=lastReportDataUrl;
+    a.download=`Reporte_Semanal_${formatDate(m)}_${formatDate(f)}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+
+/* ========== CAMBIO DE CONTEXTO ========== */
+function switchContext() {
+    const [familia, linea] = document.getElementById('context-selector').value.split('_');
+    const contextData = database[familia]?.[linea];
+    if (!contextData) { alert("Contexto no válido."); return; }
+    activePersonas = contextData.personas;
+    activeEstaciones = contextData.estaciones;
+    activeOrdenEstaciones = contextData.ordenEstaciones || Object.keys(activeEstaciones);
+    nameIndex = Object.keys(activePersonas).reduce((acc,p)=>{acc[norm(p)]=p;return acc;},{});    
+    esVistaMedioDia = false;
+    ultimaRotacion = cargarRotacion(getStorageKey("last")) || {};
+    // Al cambiar de contexto, la rotación cargada se convierte en la nueva base guardada.
+    rotacionMatutinaGuardada = JSON.parse(JSON.stringify(ultimaRotacion));
+    ultimaRotacionPrev = null;
+    historialErgonomico = cargarHistorial() || {};
+    document.getElementById('ausentesInput').value = '';
+    document.getElementById('comentarios').innerHTML = '';
+    if (!Object.keys(ultimaRotacion).length) {
+        for(const est of activeOrdenEstaciones) ultimaRotacion[est] = [];
+    }
+    cargarDatosSemana();
+    actualizarTabla();
+}
+
+/* ========== LÓGICA DEL EDITOR DE BASE DE DATOS (FUERA DE switchContext) ========== */
+let selectedPersonForEditing = null;
+function getCurrentContext() {
+    const [familia, linea] = document.getElementById('context-selector').value.split('_');
+    return { familia, linea, data: database[familia]?.[linea] };
+}
+function openDbEditor() {
+    document.getElementById('db-editor-modal').style.display = 'block';
+    const { familia, linea, data } = getCurrentContext();
+    if (!data) { alert("Contexto no válido."); return; }
+    document.getElementById('editor-context-title').textContent = `${familia} - ${linea}`;
+    const personList = document.getElementById('person-list');
+    personList.innerHTML = '';
+    const personNames = Object.keys(data.personas).sort();
+    personNames.forEach(name => {
+        const li = document.createElement('li');
+        li.textContent = name;
+        li.onclick = () => selectPersonForEditing(name);
+        personList.appendChild(li);
+    });
+    if (personNames.length > 0) {
+        selectPersonForEditing(personNames[0]);
+    } else {
+        document.getElementById('person-name-input').value = '';
+        document.getElementById('station-checkboxes').innerHTML = '';
+    }
+}
+function closeDbEditor() { document.getElementById('db-editor-modal').style.display = 'none'; }
+function selectPersonForEditing(name) {
+    selectedPersonForEditing = name;
+    document.querySelectorAll('#person-list li').forEach(li => {
+        li.classList.toggle('selected', li.textContent === name);
+    });
+    const { data } = getCurrentContext();
+    const personSkills = data.personas[name] || [];
+    document.getElementById('person-name-input').value = name;
+    const stationCheckboxes = document.getElementById('station-checkboxes');
+    stationCheckboxes.innerHTML = '';
+    const allStations = Object.keys(data.estaciones).sort();
+    allStations.forEach(station => {
+        const isChecked = personSkills.includes(station);
+        const label = document.createElement('label');
+        label.innerHTML = `<input type="checkbox" value="${station}" ${isChecked ? 'checked' : ''}> ${station}`;
+        stationCheckboxes.appendChild(label);
+    });
+}
+function addNewPerson() {
+    const newName = prompt("Introduce el nombre de la nueva persona:");
+    if (!newName || newName.trim() === "") return;
+    const { data } = getCurrentContext();
+    if (data.personas[newName]) { alert("Esta persona ya existe."); return; }
+    data.personas[newName] = [];
+    openDbEditor();
+    selectPersonForEditing(newName);
+}
+function deleteSelectedPerson() {
+    if (!selectedPersonForEditing) { alert("Por favor, selecciona una persona para eliminar."); return; }
+    if (confirm(`¿Estás seguro de que quieres eliminar a ${selectedPersonForEditing}?`)) {
+        const { data } = getCurrentContext();
+        delete data.personas[selectedPersonForEditing];
+        selectedPersonForEditing = null;
+        openDbEditor();
+    }
+}
+function saveDbChanges() {
+    const { data } = getCurrentContext();
+    const currentName = selectedPersonForEditing;
+    const newName = document.getElementById('person-name-input').value.trim();
+    if (!newName) { alert("El nombre no puede estar vacío."); return; }
+    const newSkills = [];
+    document.querySelectorAll('#station-checkboxes input:checked').forEach(checkbox => {
+        newSkills.push(checkbox.value);
+    });
+    if (currentName !== newName) {
+        if (data.personas[newName]) { alert("El nuevo nombre ya existe. Por favor, elige otro."); return; }
+        delete data.personas[currentName];
+        data.personas[newName] = newSkills;
+    } else {
+        data.personas[currentName] = newSkills;
+    }
+    localStorage.setItem('rotationDatabase', JSON.stringify(database));
+    closeDbEditor();
+    alert("¡Base de datos actualizada! El sistema se recargará con los nuevos datos.");
+    switchContext();
+}
+function escapeHtml(str) {
+    return String(str || "")
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+}
+/* ========== INICIALIZACIÓN ========== */
+function ensureOTW() {
+    // OTW ya está en initialDatabase e incluida en las opciones del selector
+    // Solo asegurarse de que se haya cargado correctamente desde la BD inicial
+    const fam = "OTW";
+    if (!database[fam] && initialDatabase[fam]) {
+        database[fam] = JSON.parse(JSON.stringify(initialDatabase[fam]));
+        localStorage.setItem('rotationDatabase', JSON.stringify(database));
+    }
+}
+
+document.addEventListener("DOMContentLoaded",()=>{
+    loadDatabase();
+    ensureNeo21();
+    ensureOTW();
+    document.getElementById('context-selector').addEventListener('change', switchContext);
+    document.getElementById("ausentesInput").addEventListener("input", () => {
+        actualizarSobrantes(); actualizarContadores();
+    });
+    dias.forEach(dia => {
+        const span = document.getElementById(`pct-${dia}`);
+        if(span) span.addEventListener('blur', () => {
+            guardarDatosSemana(); actualizarEstilosSemana();
+        });
+    });
+    // Listener para que ediciones manuales en las celdas contenteditable actualicen la rotación
+    document.addEventListener('focusout', (e) => {
+        try {
+            if (e.target && e.target.matches && e.target.matches("td[contenteditable='true']")) {
+                actualizarCeldaEditada(e);
+            }
+        } catch (err) { console.error(err); }
+    }, true);
+    switchContext();
+});
+
+function copiarLista() {
+    // Obtener la rotación actual de la tabla
+    let texto = "";
+    const tbody = document.querySelector('#rotacion tbody');
+    if (!tbody) { alert('No hay rotación generada.'); return; }
+    
+    tbody.querySelectorAll('tr').forEach(row => {
+        const estacion = row.cells[0].textContent.trim();
+        const personas = row.cells[1].textContent.trim();
+        if (personas && personas !== '(sin asignar)') {
+            texto += `${estacion}: ${personas}\n`;
+        }
+    });
+    
+    if (!texto) { alert('No hay datos para copiar.'); return; }
+    
+    // Copiar al portapapeles
+    navigator.clipboard.writeText(texto).then(() => {
+        alert('Rotación copiada al portapapeles');
+    }).catch(err => {
+        console.error('Error al copiar:', err);
+        // Fallback: mostrar en un prompt para que el usuario copie manualmente
+        prompt('Rotación (Ctrl+C para copiar):', texto);
+    });
+}
+
+function marcarAusenteSeleccionados() {
+    if (!window.selectedPersonsInTable || window.selectedPersonsInTable.size === 0) { alert('No hay personas seleccionadas. Ctrl/Cmd+Click para seleccionar.'); return; }
+    const text = document.getElementById('ausentesInput');
+    if (!text) return;
+    const lines = (text.value || '').split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+    window.selectedPersonsInTable.forEach(p => {
+        if (!lines.includes(p)) lines.push(p);
+    });
+    text.value = lines.join('\n');
+    selectedPersonsInTable.clear();
+    document.querySelectorAll('.person-link').forEach(x => x.classList.remove('person-selected'));
+    actualizarSobrantes(); actualizarContadores();
+}
+</script>
+
+<script>
+// ====== UTILIDADES DE APOYO ======
+function families() { return Object.keys(database || {}); }
+function linesOf(fam) { return Object.keys(database?.[fam] || {}).sort(); }
+function addContextOption(fam, line) {
+  const sel = document.getElementById('context-selector');
+  if (!sel) return;
+  const value = `${fam}_${line}`;
+  if ([...sel.options].some(o => o.value === value)) return;
+  const opt = document.createElement('option');
+  opt.value = value;
+  opt.textContent = `${fam} - ${line}`;
+  sel.appendChild(opt);
+}
+
+// ====== ABRIR/CERRAR MODAL ======
+function openLineManager() {
+  const famSel = document.getElementById('lm-familia');
+  const famSelList = document.getElementById('lm-familia-list');
+  const orgSel = document.getElementById('lm-origen');
+  if (!famSel || !famSelList || !orgSel) return;
+
+  famSel.innerHTML = ''; famSelList.innerHTML = ''; orgSel.innerHTML = '';
+  families().forEach(f => {
+    const o1 = document.createElement('option'); o1.value = f; o1.textContent = f; famSel.appendChild(o1);
+    const o2 = document.createElement('option'); o2.value = f; o2.textContent = f; famSelList.appendChild(o2);
+  });
+
+  const defFam = families()[0];
+  lmPopulateOrigen(defFam);
+  lmPopulateList(defFam);
+  document.getElementById('line-manager-modal').style.display = 'block';
+}
+function closeLineManager(){ document.getElementById('line-manager-modal').style.display='none'; }
+
+// ====== POBLADORES ======
+document.addEventListener('change', (e) => {
+  if (e.target && e.target.id === 'lm-familia') lmPopulateOrigen(e.target.value);
+  if (e.target && e.target.id === 'lm-familia-list') lmPopulateList(e.target.value);
+});
+function lmPopulateOrigen(fam){
+  const sel = document.getElementById('lm-origen'); sel.innerHTML='';
+  linesOf(fam).forEach(l => {
+    const o = document.createElement('option'); o.value = l; o.textContent = `${fam} - ${l}`; sel.appendChild(o);
+  });
+}
+function lmPopulateList(fam) {
+  const ul = document.getElementById('lm-line-list'); ul.innerHTML='';
+  linesOf(fam).forEach(l => {
+    const li = document.createElement('li');
+    li.textContent = l;
+    li.style.padding='8px'; li.style.cursor='pointer';
+    li.onclick = () => {
+      [...ul.children].forEach(x => x.classList.remove('selected'));
+      li.classList.add('selected');
+      li.style.background='#f0f8ff';
+    };
+    ul.appendChild(li);
+  });
+}
+function lmGetSelectedInList() {
+  const ul = document.getElementById('lm-line-list');
+  const li = [...ul.children].find(x => x.classList.contains('selected'));
+  return li ? li.textContent : null;
+}
+
+// ====== CREAR / ELIMINAR / EDITAR ======
+function lmCreateLine(){
+  const fam = document.getElementById('lm-familia').value;
+  const origen = document.getElementById('lm-origen').value;
+  const nuevo = (document.getElementById('lm-nuevo-nombre').value || '').trim();
+  const copiarPersonas = document.getElementById('lm-copiar-personas').checked;
+
+  if (!fam || !origen || !nuevo) { alert('Completa familia, origen y nombre de nueva línea.'); return; }
+  if (database[fam]?.[nuevo]) { alert('Ya existe esa línea en la familia seleccionada.'); return; }
+
+  const src = database[fam]?.[origen];
+  if (!src) { alert('Línea origen inválida.'); return; }
+
+  // ✅ Clona TODO (ergonomías y futuros metadatos)
+  const nuevoObj = JSON.parse(JSON.stringify(src));
+  if (!copiarPersonas) nuevoObj.personas = {};
+  if (!nuevoObj.estaciones) nuevoObj.estaciones = {};
+  if (!nuevoObj.ordenEstaciones) nuevoObj.ordenEstaciones = Object.keys(nuevoObj.estaciones);
+
+  database[fam] = database[fam] || {};
+  database[fam][nuevo] = nuevoObj;
+
+  localStorage.setItem('rotationDatabase', JSON.stringify(database));
+  addContextOption(fam, nuevo);
+  const cs = document.getElementById('context-selector');
+  if (cs) { cs.value = `${fam}_${nuevo}`; }
+  switchContext();
+  alert(`Línea creada: ${fam} - ${nuevo}`);
+}
+
+function lmDeleteSelected(){
+  const fam = document.getElementById('lm-familia-list').value;
+  const selLine = lmGetSelectedInList();
+  if (!fam || !selLine) { alert('Selecciona una línea.'); return; }
+
+  const csVal = document.getElementById('context-selector').value;
+  const [currentFam, currentLine] = csVal.split('_');
+  if (currentFam === fam && currentLine === selLine) {
+    alert('No puedes eliminar la línea actualmente seleccionada.');
+    return;
+  }
+
+  if (!confirm(`¿Eliminar ${fam} - ${selLine}? Esta acción no se puede deshacer.`)) return;
+  delete database[fam][selLine];
+  if (Object.keys(database[fam]).length === 0) delete database[fam];
+
+  localStorage.setItem('rotationDatabase', JSON.stringify(database));
+
+  // Quitar del selector de contexto
+  const sel = document.getElementById('context-selector');
+  [...sel.options].forEach(o => { if (o.value === `${fam}_${selLine}`) o.remove(); });
+
+  lmPopulateList(fam);
+  alert('Línea eliminada.');
+}
+
+function lmOpenDbEditor(){
+  const fam = document.getElementById('lm-familia-list').value;
+  const selLine = lmGetSelectedInList();
+  if (!fam || !selLine) { alert('Selecciona una línea.'); return; }
+  const cs = document.getElementById('context-selector');
+  if (cs) cs.value = `${fam}_${selLine}`;
+  switchContext();
+  openDbEditor();
+}
+
+// ====== MAPA DE ESTACIONES (normalización de texto) ======
+const LM_STATION_MAP = {
+  "im": "IM Necking",
+  "om": "OM",
+  "corte balloon": "Corte de Balloon",
+  "proximal": "Proximal",
+  "marcas": "Marcadores de IM",
+  "láser de marcas": "Laser de Marcadores",
+  "laser de marcas": "Laser de Marcadores",
+  "leak test": "Leak Test",
+  "distal prep": "Distal Prep",
+  "distal": "Distal Laser", // << mantener así
+  "notch": "Notch",
+  "hipotubo": "Hipotubo",
+  "press": "Press",
+  "coil": "Coil",
+  "sidearm": "Sidearm",
+  "plasma": "Plasma",
+  "hidro": "Hidro",
+  "fold": "Fold",
+  "fundas": "Fundas",
+  "pouch": "Pouch",
+  "empaque": "Empaque",
+  "hidrofilico": "Hidro"
+};
+
+// Normaliza una cadena "A - B - C" a lista de estaciones en tu sistema
+function lmNormalizeSkills(str) {
+  return str.split(/-|,/g).map(s => s.trim()).filter(Boolean).map(s => {
+    const k = s.normalize("NFD").replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    return LM_STATION_MAP[k] || s;
+  });
+}
+
+// ====== ALTA AUTOMÁTICA: "NC Trek NEO - 2.1" ======
+function ensureNeo21(){
+  const fam = "NC Trek NEO";
+  const srcLine = "1.4";
+  const newLine = "2.1";
+
+  // Si ya existe, solo exponer en selector
+  if (database?.[fam]?.[newLine]) { addContextOption(fam, newLine); return; }
+
+  const base = database?.[fam]?.[srcLine];
+  if (!base) { console.warn("No existe línea origen NC Trek NEO - 1.4"); return; }
+
+  // Personas provistas
+  const raw = {
+    "Josué": "Im- Hipotubo",
+    "Keilin": "Im- Press",
+    "María": "Om- Corte Balloon- Proximal",
+    "Fabiola": "Marcas- Om- Proximal",
+    "Jocsua": "Marcas",
+    "Yaret": "Marcas- Láser de marcas",
+    "Kenia": "Coil- Láser de marcas- Marcas",
+    "Nazaret": "Om- Corte Balloon",
+    "Bairon": "Leak test- Proximal",
+    "Emily": "Im- Marcas- Distal prep",
+    "Andrey": "Leak test- distal prep- notch- hipotubo",
+    "Andrés": "Distal- Om",
+    "Celeste": "Im- Láser de marcas- notch- press",
+    "Andrea": "Notch",
+    "Charlie": "Notch- Hipotubo- Sidearm- Plasma",
+    "J.Pablo": "Hipotubo- Notch",
+    "Dilan": "Distal- Hipotubo",
+    "Evelyn": "Sidearm- Láser de marcas, distal prep",
+    "Felipe": "Hipotubo- Sidearm- Leak test- Plasma",
+    "David": "Notch- Plasma- Hidro",
+    "Eli": "Marcas- Láser de marcas- Plasma- Hidro",
+    "Eva": "Fold- Om",
+    "Aris": "Fold- Coil",
+    "Juan": "Fundas- Hipotubo",
+    "Brayan": "Fundas- Press",
+    "Kevin": "Empaque- Coil- Pouch",
+    "Sonnia": "Om",
+    "Jefry": "Plasma- Hidrofilico- Pouch- Empaque",
+    "Ángel": "Fold- Empaque",
+    "Suamy": "Distal prep"
+  };
+
+  const personas = {};
+  Object.entries(raw).forEach(([name, skills]) => { personas[name] = lmNormalizeSkills(skills); });
+
+  // ✅ Clonar TODO de la 1.4 (incluye ergonomías y metadatos)
+  const cloned = JSON.parse(JSON.stringify(base));
+  cloned.personas = personas; // reemplazar solo personas
+
+  if (!cloned.estaciones) cloned.estaciones = {};
+  if (!cloned.ordenEstaciones) cloned.ordenEstaciones = Object.keys(cloned.estaciones);
+
+  database[fam] = database[fam] || {};
+  database[fam][newLine] = cloned;
+
+  // Persistir y exponer
+  localStorage.setItem('rotationDatabase', JSON.stringify(database));
+  addContextOption(fam, newLine);
+}
+// === AUTOCOMPLETADO (Idea 4) === DESACTIVADO
+// El autocompletado de nombres ha sido desactivado
+
+
+// === PDF AUDITORÍA (Idea 6) ===
+// Agregar este bloque y un botón que llame: generarAuditoriaPDF()
+
+async function generarAuditoriaPDF() {
+    if (!window.jspdf) {
+        alert('Falta la librería jsPDF. Añade su <script> en el <head> (por ejemplo: https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js)');
+        return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: "pt", format: "letter" });
+
+    let y = 40;
+
+    doc.setFontSize(18);
+    doc.text("AUDITORÍA DEL DÍA", 40, y);
+    y += 30;
+
+    doc.setFontSize(12);
+    doc.text("Fecha: " + new Date().toLocaleDateString(), 40, y);
+    y += 20;
+
+    // Rotación mañana
+    doc.setFontSize(14);
+    doc.text("Rotación (Mañana):", 40, y);
+    y += 20;
+
+    if (rotacionMatutinaGuardada && Object.keys(rotacionMatutinaGuardada).length) {
+        for (const est in rotacionMatutinaGuardada) {
+            const items = Array.isArray(rotacionMatutinaGuardada[est]) ? rotacionMatutinaGuardada[est] : [rotacionMatutinaGuardada[est]].filter(Boolean);
+            doc.setFontSize(12);
+            doc.text(`${est}: ${items.join(", ")}`, 40, y);
+            y += 15;
+            if (y > 720) { doc.addPage(); y = 40; }
+        }
+    } else {
+        doc.setFontSize(12);
+        doc.text("(Sin rotación matutina registrada)", 40, y);
+        y += 15;
+    }
+
+    y += 20;
+
+    // Medio día
+    if (esVistaMedioDia && ultimaRotacion && Object.keys(ultimaRotacion).length) {
+        doc.setFontSize(14);
+        doc.text("Rotación (Medio día):", 40, y);
+        y += 20;
+
+        for (const est in ultimaRotacion) {
+            const items = Array.isArray(ultimaRotacion[est]) ? ultimaRotacion[est] : [ultimaRotacion[est]].filter(Boolean);
+            doc.setFontSize(12);
+            doc.text(`${est}: ${items.join(", ")}`, 40, y);
+            y += 15;
+            if (y > 720) { doc.addPage(); y = 40; }
+        }
+        y += 20;
+    }
+
+    // Ausentes
+    const aus = obtenerAusentes();
+    if (aus && aus.length) {
+        doc.setFontSize(14);
+        doc.text("Ausentes:", 40, y);
+        y += 20;
+        doc.setFontSize(12);
+        aus.forEach(a => {
+            doc.text("- " + a, 40, y);
+            y += 15;
+            if (y > 720) { doc.addPage(); y = 40; }
+        });
+    }
+
+    doc.save("Auditoria.pdf");
+}
+// ====== INICIALIZACIÓN: inyectar 2.1 y OTW al arrancar ======
+// (Duplicated - removed to prevent conflicts)
+</script>
+
+<!-- ========== MODAL EDITOR DE BASE DE DATOS ========== -->
+<div id="db-editor-modal" class="modal-overlay">
+    <div class="modal-content">
+        <h2>Editor de Base de Datos - <span id="editor-context-title"></span></h2>
+        <div class="editor-grid">
+            <div>
+                <h3>Personal</h3>
+                <ul id="person-list"></ul>
+                <button onclick="addNewPerson()">Añadir Persona</button>
+                <button onclick="deleteSelectedPerson()" style="background-color: #dc3545;">Eliminar</button>
+            </div>
+            <div>
+                <h3>Detalles de la Persona</h3>
+                <label for="person-name-input"><strong>Nombre:</strong></label>
+                <input type="text" id="person-name-input" style="width: 95%; padding: 8px; margin-bottom: 15px; font-size: 1em;">
+                <h4>Estaciones Asignadas</h4>
+                <div id="station-checkboxes" class="station-checkboxes"></div>
+            </div>
+        </div>
+        <hr>
+        <button onclick="saveDbChanges()" class="db-editor-btn">Guardar Cambios y Recargar</button>
+        <button onclick="closeDbEditor()" style="background-color: #6c757d;">Cancelar</button>
+    </div>
+</div>
+
+</body>
+</html>
+
+
